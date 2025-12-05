@@ -14,16 +14,16 @@ const playerImg = new Image();
 playerImg.src = "PIZZA-KHOOR.png";
 
 const obstacleImg = new Image();
-obstacleImg.src = "shit.WEBP";
+obstacleImg.src = "shit.webp";
 
 const redImg = new Image();
-redImg.src = "PIZZA1.png";
+redImg.src = "pizza1.png";
 
 const greenImg = new Image();
 greenImg.src = "DRUG.png"; // آبجکت سبز
 
 const blueImg = new Image();
-blueImg.src = "WEED.WEBP"; // آبجکت آبی
+blueImg.src = "weed.webp"; // آبجکت آبی
 
 let player = { x: canvas.width/2 - 60, y: canvas.height - 170, w: 170, h: 170 };
 let reds = [];
@@ -38,13 +38,13 @@ let pizzaProbability = 0.3;
 
 // 🎵 صداها
 const pizzaSounds = [
-  new Audio("sounds/pizza1.ogg"),
-  new Audio("sounds/pizza2.ogg")
+  new Audio("pizza1.ogg"),
+  new Audio("pizza2.ogg")
 ];
 
 const gameOverSounds = [
-  new Audio("sounds/gameover1.ogg"),
-  new Audio("sounds/gameover1.ogg")
+  new Audio("gameover1.ogg"),
+  new Audio("gameover1.ogg")
 ];
 
 function playRandomSound(soundArray) {
@@ -222,5 +222,6 @@ setInterval(() => {
 setInterval(() => {
   if (Math.random() < 0.2) spawnBlue();
 }, 7000);
+
 
 gameLoop();

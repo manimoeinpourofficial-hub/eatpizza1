@@ -1,129 +1,121 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// تنظیم ابعاد ریسپانسیو
+// شخصیت بازی
+let player = { x: 0, y: 0, w: 0, h: 0 };
+
+// تنظیم ابعاد ریسپانسیو و موقعیت شخصیت
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
+
+  // مقیاس نسبی
+  const scale = 0.25; // بزرگ‌تر از قبل (25٪ عرض صفحه)
+  let size = canvas.width * scale;
+
+  // محدودیت‌ها
+  const minSize = 150;   // حداقل 100px
+  const maxSize = 180;   // حداکثر 180px
+  size = Math.max(minSize, Math.min(size, maxSize));
+
+  player.w = size;
+  player.h = size;
+
+  // فاصله از پایین بیشتر (مثلاً 10٪ ارتفاع)
+  const bottomMargin = canvas.height * 0.0;
+  player.y = canvas.height - player.h - bottomMargin;
+
+  // وسط‌چین افقی
+  player.x = canvas.width / 2 - player.w / 2;
 }
+
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 // بارگذاری تصاویر
-const playerImg = new Image();
-playerImg.src = "PIZZA-KHOOR.png";
+const playerImg = new Image(); playerImg.src = "PIZZA-KHOOR.png";
+const obstacleImg = new Image(); obstacleImg.src = "shit.webp";
+const redImg = new Image(); redImg.src = "pizza1.png";
+const greenImg = new Image(); greenImg.src = "DRUG.png";
+const blueImg = new Image(); blueImg.src = "weed.webp";
 
-const obstacleImg = new Image();
-obstacleImg.src = "shit.webp";
-
-const redImg = new Image();
-redImg.src = "pizza1.png";
-
-const greenImg = new Image();
-greenImg.src = "DRUG.png"; // آبجکت سبز
-
-const blueImg = new Image();
-blueImg.src = "weed.webp"; // آبجکت آبی
-
-let player = { x: canvas.width/2 - 60, y: canvas.height - 170, w: 170, h: 170 };
-let reds = [];
-let obstacles = [];
-let greens = [];
-let blues = [];
-let score = 0;
-let gameOver = false;
-
-// احتمال ظاهر شدن پیتزا
+let reds = [], obstacles = [], greens = [], blues = [];
+let score = 0, gameOver = false;
 let pizzaProbability = 0.3;
 
 // 🎵 صداها
-const pizzaSounds = [
-  new Audio("pizza1.ogg"),
-  new Audio("pizza2.ogg")
-];
+const pizzaSounds = [new Audio("sounds/pizza1.ogg"), new Audio("sounds/pizza2.ogg")];
+const gameOverSounds = [new Audio("sounds/gameover1.ogg"), new Audio("sounds/gameover1.ogg")];
 
-const gameOverSounds = [
-  new Audio("gameover1.ogg"),
-  new Audio("gameover1.ogg")
-];
-
-function playRandomSound(soundArray) {
-  const index = Math.floor(Math.random() * soundArray.length);
-  soundArray[index].play();
+function playRandomSound(arr) {
+  const i = Math.floor(Math.random() * arr.length);
+  arr[i].play();
 }
 
 // حرکت با موس
 canvas.addEventListener("mousemove", e => {
   const rect = canvas.getBoundingClientRect();
   player.x = e.clientX - rect.left - player.w / 2;
+  player.x = Math.max(0, Math.min(player.x, canvas.width - player.w));
 });
 
-// حرکت با لمس موبایل
+// حرکت با لمس
 canvas.addEventListener("touchmove", e => {
   const rect = canvas.getBoundingClientRect();
   const touchX = e.touches[0].clientX - rect.left;
   player.x = touchX - player.w / 2;
+  player.x = Math.max(0, Math.min(player.x, canvas.width - player.w));
 });
 
-// کلیک یا لمس برای ریستارت
+// ریستارت
 canvas.addEventListener("click", () => { if (gameOver) restartGame(); });
 canvas.addEventListener("touchstart", () => { if (gameOver) restartGame(); });
 
+// اسپاون آبجکت‌ها
 function spawnRed() {
-  reds.push({
-    x: Math.random() * (canvas.width - 60),
-    y: -60,
-    w: 60,
-    h: 60,
-    alpha: 1,
-    caught: false
-  });
+  reds.push({ x: Math.random() * (canvas.width - 60), y: -60, w: 60, h: 60, alpha: 1, caught: false });
 }
-
 function spawnObstacle() {
   obstacles.push({ x: Math.random() * (canvas.width - 40), y: -40, w: 60, h: 60 });
 }
-
 function spawnGreen() {
   greens.push({ x: Math.random() * (canvas.width - 40), y: -40, w: 60, h: 60 });
 }
-
 function spawnBlue() {
   blues.push({ x: Math.random() * (canvas.width - 40), y: -40, w: 80, h: 80 });
 }
 
+// برخورد
+function isColliding(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+// آپدیت
 function update() {
   if (gameOver) return;
 
-  // پیتزاها
   reds.forEach(r => {
     r.y += 3;
     if (isColliding(player, r) && !r.caught) {
-      score++;
-      r.caught = true;
-      playRandomSound(pizzaSounds); // 🎵 صدا خوردن پیتزا
+      score++; r.caught = true; playRandomSound(pizzaSounds);
     }
     if (r.caught) {
       r.alpha -= 0.05;
       if (r.alpha <= 0) reds.splice(reds.indexOf(r), 1);
     }
     if (r.y > canvas.height && !r.caught) {
-      gameOver = true;
-      playRandomSound(gameOverSounds); // 🎵 صدا Game Over
+      gameOver = true; playRandomSound(gameOverSounds);
     }
   });
 
-  // موانع
   obstacles.forEach(o => {
     o.y += 4;
     if (isColliding(player, o)) {
-      gameOver = true;
-      playRandomSound(gameOverSounds); // 🎵 صدا Game Over
+      gameOver = true; playRandomSound(gameOverSounds);
     }
     if (o.y > canvas.height) obstacles.splice(obstacles.indexOf(o), 1);
   });
 
-  // سبزها
   greens.forEach(g => {
     g.y += 3;
     if (isColliding(player, g)) {
@@ -133,7 +125,6 @@ function update() {
     if (g.y > canvas.height) greens.splice(greens.indexOf(g), 1);
   });
 
-  // آبی‌ها
   blues.forEach(b => {
     b.y += 3;
     if (isColliding(player, b)) {
@@ -144,39 +135,21 @@ function update() {
   });
 }
 
-function isColliding(a, b) {
-  return a.x < b.x + b.w &&
-        a.x + a.w > b.x &&
-        a.y < b.y + b.h &&
-        a.y + a.h > b.y;
-}
-
+// رسم
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   ctx.drawImage(playerImg, player.x, player.y, player.w, player.h);
 
   reds.forEach(r => {
     ctx.save();
-    if (r.caught) {
-      ctx.globalAlpha = r.alpha;
-      ctx.filter = "blur(2px)";
-    }
+    if (r.caught) { ctx.globalAlpha = r.alpha; ctx.filter = "blur(2px)"; }
     ctx.drawImage(redImg, r.x, r.y, r.w, r.h);
     ctx.restore();
   });
 
-  obstacles.forEach(o => {
-    ctx.drawImage(obstacleImg, o.x, o.y, o.w, o.h);
-  });
-
-  greens.forEach(g => {
-    ctx.drawImage(greenImg, g.x, g.y, g.w, g.h);
-  });
-
-  blues.forEach(b => {
-    ctx.drawImage(blueImg, b.x, b.y, b.w, b.h);
-  });
+  obstacles.forEach(o => ctx.drawImage(obstacleImg, o.x, o.y, o.w, o.h));
+  greens.forEach(g => ctx.drawImage(greenImg, g.x, g.y, g.w, g.h));
+  blues.forEach(b => ctx.drawImage(blueImg, b.x, b.y, b.w, b.h));
 
   ctx.fillStyle = "black";
   ctx.font = "20px Arial";
@@ -192,36 +165,20 @@ function draw() {
   }
 }
 
-function gameLoop() {
-  update();
-  draw();
-  requestAnimationFrame(gameLoop);
-}
-
+// ریستارت
 function restartGame() {
-  reds = [];
-  obstacles = [];
-  greens = [];
-  blues = [];
-  score = 0;
-  pizzaProbability = 0.3;
-  gameOver = false;
+  reds = []; obstacles = []; greens = []; blues = [];
+  score = 0; pizzaProbability = 0.3; gameOver = false;
 }
 
-// زمان‌بندی ظاهر شدن آیتم‌ها
-setInterval(() => {
-  if (Math.random() < pizzaProbability) spawnRed();
-}, 1500);
-
+// زمان‌بندی
+setInterval(() => { if (Math.random() < pizzaProbability) spawnRed(); }, 1500);
 setInterval(spawnObstacle, 3000);
+setInterval(() => { if (Math.random() < 0.2) spawnGreen(); }, 5000);
+setInterval(() => { if (Math.random() < 0.2) spawnBlue(); }, 7000);
 
-setInterval(() => {
-  if (Math.random() < 0.2) spawnGreen();
-}, 5000);
-
-setInterval(() => {
-  if (Math.random() < 0.2) spawnBlue();
-}, 7000);
-
-
+// اجرا
+function gameLoop() {
+  update(); draw(); requestAnimationFrame(gameLoop);
+}
 gameLoop();

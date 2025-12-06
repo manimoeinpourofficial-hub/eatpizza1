@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <title>Catch the Reds</title>
+
+  <!-- جلوگیری از زوم و اسکرول -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,5 +18,19 @@
   <canvas id="gameCanvas"></canvas>
 
   <script src="script.js"></script>
+
+  <!-- جلوگیری از اسکرول و زوم -->
+  <script>
+    const blockEvent = e => { e.preventDefault(); e.stopPropagation(); };
+
+    window.addEventListener('wheel', blockEvent, { passive: false });
+    window.addEventListener('touchmove', blockEvent, { passive: false });
+    window.addEventListener('gesturestart', blockEvent, { passive: false });
+
+    window.addEventListener('keydown', e => {
+      const keys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','PageUp','PageDown','Home','End'];
+      if (keys.includes(e.code)) blockEvent(e);
+    });
+  </script>
 </body>
 </html>

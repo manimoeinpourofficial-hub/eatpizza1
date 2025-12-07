@@ -1,21 +1,31 @@
-<canvas id="gameCanvas"></canvas>
-<script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// 🎨 تصاویر
-const images = {
-  player: "PIZZA-KHOOR.png",
-  pizza: "pizza1.png",
-  drug: "DRUG.png",
-  weed: "weed.webp",
-  shit: "shit.webp"
-};
-for (let key in images) {
-  const img = new Image();
-  img.src = images[key];
-  images[key] = img;
+// شخصیت بازی
+let player = { x: 0, y: 0, w: 0, h: 0 };
+
+// تنظیم ابعاد ریسپانسیو
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const size = Math.max(150, Math.min(canvas.width * 0.25, 180));
+  player.w = player.h = size;
+  player.y = canvas.height - player.h;
+  player.x = canvas.width / 2 - player.w / 2;
 }
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
+
+// بارگذاری تصاویر
+const playerImg = new Image(); playerImg.src = "PIZZA-KHOOR.png";
+const obstacleImg = new Image(); obstacleImg.src = "shit.webp";
+const redImg = new Image(); redImg.src = "pizza1.png";
+const greenImg = new Image(); greenImg.src = "DRUG.png";
+const blueImg = new Image(); blueImg.src = "weed.webp";
+
+let reds = [], obstacles = [], greens = [], blues = [];
+let score = 0, gameOver = false;
+let pizzaProbability = 0.3;
 
 // 🎵 صداها
 const sounds = {
@@ -37,46 +47,33 @@ function playSound(name) {
   }
 }
 
-// 🎮 وضعیت بازی
-let player = { x: 0, y: 0, w: 0, h: 0 };
-let reds = [], obstacles = [], greens = [], blues = [];
-let score = 0, gameOver = false, pizzaProbability = 0.3;
+// کنترل بازیکن
+canvas.addEventListener("mousemove", e => {
+  const rect = canvas.getBoundingClientRect();
+  player.x = e.clientX - rect.left - player.w / 2;
+  player.x = Math.max(0, Math.min(player.x, canvas.width - player.w));
+});
+canvas.addEventListener("touchmove", e => {
+  const rect = canvas.getBoundingClientRect();
+  const touchX = e.touches[0].clientX - rect.left;
+  player.x = touchX - player.w / 2;
+  player.x = Math.max(0, Math.min(player.x, canvas.width - player.w));
+});
+canvas.addEventListener("click", () => { if (gameOver) restartGame(); });
+canvas.addEventListener("touchstart", () => { if (gameOver) restartGame(); });
 
-// 📐 تنظیم اندازه و موقعیت
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const size = Math.max(150, Math.min(canvas.width * 0.25, 180));
-  player.w = player.h = size;
-  player.y = canvas.height - player.h;
-  player.x = canvas.width / 2 - player.w / 2;
-}
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+// اسپاون
+function spawnRed() { reds.push({ x: Math.random() * (canvas.width - 60), y: -60, w: 60, h: 60, alpha: 1, caught: false }); }
+function spawnObstacle() { obstacles.push({ x: Math.random() * (canvas.width - 40), y: -40, w: 60, h: 60 }); }
+function spawnGreen() { greens.push({ x: Math.random() * (canvas.width - 40), y: -40, w: 60, h: 60 }); }
+function spawnBlue() { blues.push({ x: Math.random() * (canvas.width - 40), y: -40, w: 80, h: 80 }); }
 
-// 🕹️ کنترل بازیکن
-function move(x) {
-  player.x = Math.max(0, Math.min(x - player.w / 2, canvas.width - player.w));
-}
-canvas.addEventListener("mousemove", e => move(e.clientX - canvas.getBoundingClientRect().left));
-canvas.addEventListener("touchmove", e => move(e.touches[0].clientX - canvas.getBoundingClientRect().left));
-["click", "touchstart"].forEach(ev => canvas.addEventListener(ev, () => { if (gameOver) restartGame(); }));
-
-// 🎯 اسپاون آبجکت‌ها
-function spawn(arr, w, h) {
-  arr.push({ x: Math.random() * (canvas.width - w), y: -h, w, h, alpha: 1, caught: false });
-}
-setInterval(() => { if (Math.random() < pizzaProbability) spawn(reds, 60, 60); }, 1500);
-setInterval(() => spawn(obstacles, 60, 60), 3000);
-setInterval(() => { if (Math.random() < 0.2) spawn(greens, 60, 60); }, 5000);
-setInterval(() => { if (Math.random() < 0.2) spawn(blues, 80, 80); }, 7000);
-
-// 💥 برخورد
+// برخورد
 function isColliding(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-// 🔄 آپدیت
+// آپدیت
 function update() {
   if (gameOver) return;
 
@@ -124,43 +121,49 @@ function update() {
   });
 }
 
-// 🖼️ رسم
+// رسم
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(images.player, player.x, player.y, player.w, player.h);
+  ctx.drawImage(playerImg, player.x, player.y, player.w, player.h);
 
   reds.forEach(r => {
     ctx.save();
     if (r.caught) { ctx.globalAlpha = r.alpha; ctx.filter = "blur(2px)"; }
-    ctx.drawImage(images.pizza, r.x, r.y, r.w, r.h);
+    ctx.drawImage(redImg, r.x, r.y, r.w, r.h);
     ctx.restore();
   });
 
-  obstacles.forEach(o => ctx.drawImage(images.shit, o.x, o.y, o.w, o.h));
-  greens.forEach(g => ctx.drawImage(images.drug, g.x, g.y, g.w, g.h));
-  blues.forEach(b => ctx.drawImage(images.weed, b.x, b.y, b.w, b.h));
+  obstacles.forEach(o => ctx.drawImage(obstacleImg, o.x, o.y, o.w, o.h));
+  greens.forEach(g => ctx.drawImage(greenImg, g.x, g.y, g.w, g.h));
+  blues.forEach(b => ctx.drawImage(blueImg, b.x, b.y, b.w, b.h));
 
   ctx.fillStyle = "black";
   ctx.font = "20px Arial";
   ctx.fillText(`Score: ${score}`, 10, 30);
-  ctx.fillText(`Pizza Chance: ${(pizzaProbability * 100).toFixed(0)}%`, 10, 60);
+  ctx.fillText(`Pizza Chance: ${(pizzaProbability*100).toFixed(0)}%`, 10, 60);
 
   if (gameOver) {
     ctx.font = "40px Arial";
-    ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
+    ctx.fillText("Game Over!", canvas.width/2 - 100, canvas.height/2);
     ctx.font = "20px Arial";
-    ctx.fillText("Tap or Click to Restart", canvas.width / 2 - 100, canvas.height / 2 + 40);
+    ctx.fillText("Tap or Click to Restart", canvas.width/2 - 100, canvas.height/2 + 40);
   }
 }
 
-// 🔁 ریستارت
+// ریستارت
 function restartGame() {
   reds = []; obstacles = []; greens = []; blues = [];
   score = 0; pizzaProbability = 0.3; gameOver = false;
 }
 
-// 🚀 اجرا
-(function gameLoop() {
+// زمان‌بندی
+setInterval(() => { if (Math.random() < pizzaProbability) spawnRed(); }, 1500);
+setInterval(spawnObstacle, 3000);
+setInterval(() => { if (Math.random() < 0.2) spawnGreen(); }, 5000);
+setInterval(() => { if (Math.random() < 0.2) spawnBlue(); }, 7000);
+
+// اجرا
+function gameLoop() {
   update(); draw(); requestAnimationFrame(gameLoop);
-})();
-</script>
+}
+gameLoop();

@@ -3,7 +3,7 @@ const ctx = canvas.getContext("2d");
 
 const isMobile = window.innerWidth < 600;
 
-// 🎮 وضعیت بازی
+// وضعیت بازی
 let player = { x: 0, y: 0, w: 0, h: 0 };
 let reds = [], obstacles = [], greens = [], blues = [], bullets = [], explosions = [];
 let score = 0, ammo = 0;
@@ -14,7 +14,7 @@ let pizzaProbability = 0.3;
 const itemSize = isMobile ? 30 : 60;
 const bulletSize = isMobile ? 12 : 20;
 
-// 📐 ریسپانسیو
+// ریسپانسیو
 function resizeCanvas() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
@@ -27,16 +27,16 @@ function resizeCanvas() {
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-// 🎨 تصاویر
-const playerImg = new Image(); playerImg.src = "images/PIZZA-KHOOR.png";
-const obstacleImg = new Image(); obstacleImg.src = "images/shit.webp";
-const redImg = new Image(); redImg.src = "images/pizza1.png";
-const greenImg = new Image(); greenImg.src = "images/DRUG.png";
-const blueImg = new Image(); blueImg.src = "images/weed.webp";
-const bulletImg = new Image(); bulletImg.src = "images/bullet.png";
-const explosionImg = new Image(); explosionImg.src = "images/explosion.png";
+// تصاویر (همه در روت)
+const playerImg = new Image(); playerImg.src = "PIZZA-KHOOR.png";
+const obstacleImg = new Image(); obstacleImg.src = "shit.webp";
+const redImg = new Image(); redImg.src = "pizza1.png";
+const greenImg = new Image(); greenImg.src = "DRUG.png";
+const blueImg = new Image(); blueImg.src = "weed.webp";
+const bulletImg = new Image(); bulletImg.src = "bullet.png";
+const explosionImg = new Image(); explosionImg.src = "explosion.png";
 
-// 🎵 صداها
+// صداها (همه در روت)
 let loadedSounds = 0, totalSounds = 0;
 function makeAudio(src) {
   const a = new Audio(src);
@@ -46,17 +46,17 @@ function makeAudio(src) {
   return a;
 }
 const sounds = {
-  pizza: [makeAudio("sounds/2.mp3"), makeAudio("sounds/3.mp3"), makeAudio("sounds/5.mp3"), makeAudio("sounds/6.mp3")],
-  gameOver: [makeAudio("sounds/gameover1.ogg"), makeAudio("sounds/gameover2.ogg")],
-  drug: makeAudio("sounds/1.mp3"),
-  shit: makeAudio("sounds/4.mp3"),
-  explode: makeAudio("sounds/explode.mp3")
+  pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3"), makeAudio("6.mp3")],
+  gameOver: [makeAudio("gameover1.ogg"), makeAudio("gameover2.ogg")],
+  drug: makeAudio("1.mp3"),
+  shit: makeAudio("4.mp3"),
+  explode: makeAudio("explode.mp3")
 };
-const bgMusic = makeAudio("sounds/background.mp3");
+const bgMusic = makeAudio("background.mp3");
 bgMusic.loop = true;
 bgMusic.volume = 0.5;
 
-// 🎶 صف پخش صداها
+// صف پخش صداها
 let soundQueue = [], isPlaying = false;
 function playSound(name) {
   if (!gameStarted) return;
@@ -71,18 +71,48 @@ function processQueue() {
   const current = soundQueue.shift();
   isPlaying = true;
   current.currentTime = 0;
-  current.play().catch(()=>{isPlaying=false;});
+  current.play().catch(()=>{ isPlaying = false; });
   current.onended = () => { isPlaying = false; processQueue(); };
 }
 
-// 🕹️ کنترل بازیکن
+// کنترل حرکت
 function move(x) {
   player.x = Math.max(0, Math.min(x - player.w / 2, canvas.width - player.w));
 }
-canvas.addEventListener("mousemove", e => move(e.clientX - canvas.getBoundingClientRect().left));
-canvas.addEventListener("touchmove", e => move(e.touches[0].clientX - canvas.getBoundingClientRect().left));
+canvas.addEventListener("mousemove", e => {
+  const rect = canvas.getBoundingClientRect();
+  move(e.clientX - rect.left);
+});
+canvas.addEventListener("touchmove", e => {
+  const rect = canvas.getBoundingClientRect();
+  move(e.touches[0].clientX - rect.left);
+}, { passive: true });
 
-// 🔫 شلیک
+// شروع/شلیک/ریستارت با جسچر
+canvas.addEventListener("touchstart", () => {
+  if (!gameStarted) {
+    gameStarted = true;
+    bgMusic.play().catch(()=>{});
+    return;
+  }
+  if (gameOver) { restartGame(); return; }
+  shoot();
+}, { passive: true });
+
+window.addEventListener("keydown", e => {
+  if (e.code === "Space") {
+    if (!gameStarted) {
+      gameStarted = true;
+      bgMusic.play().catch(()=>{});
+    } else if (gameOver) {
+      restartGame();
+    } else {
+      shoot();
+    }
+  }
+});
+
+// شلیک
 function shoot() {
   if (ammo > 0) {
     ammo--;
@@ -95,40 +125,57 @@ function shoot() {
   }
 }
 
-// 🎯 اسپاون
-function spawnRed(){reds.push({x:Math.random()*(canvas.width-itemSize),y:-itemSize,w:itemSize,h:itemSize,alpha:1,caught:false});}
-function spawnObstacle(){obstacles.push({x:Math.random()*(canvas.width-itemSize),y:-itemSize,w:itemSize,h:itemSize});}
-function spawnGreen(){greens.push({x:Math.random()*(canvas.width-itemSize),y:-itemSize,w:itemSize,h:itemSize});}
-function spawnBlue(){blues.push({x:Math.random()*(canvas.width-itemSize),y:-itemSize,w:itemSize+15,h:itemSize+15});}
+// اسپاون
+function spawnRed(){ reds.push({ x: Math.random()*(canvas.width-itemSize), y: -itemSize, w: itemSize, h: itemSize, alpha:1, caught:false }); }
+function spawnObstacle(){ obstacles.push({ x: Math.random()*(canvas.width-itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
+function spawnGreen(){ greens.push({ x: Math.random()*(canvas.width-itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
+function spawnBlue(){ blues.push({ x: Math.random()*(canvas.width-itemSize), y: -itemSize, w: itemSize+15, h: itemSize+15 }); }
 
-// 💥 برخورد
-function isColliding(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+// برخورد
+function isColliding(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
-// 🔄 آپدیت
+// آپدیت
 function update(){
   if (gameOver || !gameStarted) return;
 
+  // پیتزاها
   reds.forEach(r=>{
     r.y += 3;
-    if(isColliding(player,r) && !r.caught){
+    if (isColliding(player, r) && !r.caught) {
       score++; r.caught = true; playSound("pizza");
-      if (score % 3 === 0) ammo++;
+      if (score % 3 === 0) ammo++; // هر ۳ پیتزا یک تیر
     }
-    if(r.caught){ r.alpha -= 0.05; if(r.alpha <= 0) reds.splice(reds.indexOf(r),1); }
-    if(r.y > canvas.height && !r.caught){ gameOver = true; playSound("gameOver"); }
+    if (r.caught) { r.alpha -= 0.05; if (r.alpha <= 0) reds.splice(reds.indexOf(r), 1); }
+    if (r.y > canvas.height && !r.caught) { gameOver = true; playSound("gameOver"); }
   });
 
+  // مانع‌ها
   obstacles.forEach(o=>{
     o.y += 3;
-    if(isColliding(player,o)){ gameOver = true; playSound("shit"); playSound("gameOver"); }
-    if(o.y > canvas.height) obstacles.splice(obstacles.indexOf(o),1);
+    if (isColliding(player, o)) { gameOver = true; playSound("shit"); playSound("gameOver"); }
+    if (o.y > canvas.height) obstacles.splice(obstacles.indexOf(o), 1);
   });
 
+  // پاورآپ‌ها
+  greens.forEach(g=>{
+    g.y += 3;
+    if (isColliding(player, g)) { pizzaProbability = Math.max(0.05, pizzaProbability - 0.15); playSound("drug"); greens.splice(greens.indexOf(g),1); }
+    if (g.y > canvas.height) greens.splice(greens.indexOf(g),1);
+  });
+  blues.forEach(b=>{
+    b.y += 3;
+    if (isColliding(player, b)) { pizzaProbability = Math.min(0.9, pizzaProbability + 0.1); blues.splice(blues.indexOf(b),1); }
+    if (b.y > canvas.height) blues.splice(blues.indexOf(b),1);
+  });
+
+  // گلوله‌ها + برخورد با مانع
   bullets.forEach(b=>{
     b.y -= b.speed;
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
-      if (isColliding(b, o)) {
+      // برای برخورد، اندازه‌ی گلوله لازم داریم:
+      const bb = { x: b.x, y: b.y, w: b.w, h: b.h };
+      if (isColliding(bb, o)) {
         explosions.push({ x: o.x, y: o.y, frame: 0 });
         playSound("explode");
         obstacles.splice(i, 1);
@@ -140,55 +187,81 @@ function update(){
     if (b.y + b.h < 0) bullets.splice(bullets.indexOf(b), 1);
   });
 
+  // عمر افکت انفجار
   explosions.forEach(e=>{
     e.frame++;
-    if(e.frame > 10) explosions.splice(explosions.indexOf(e),1);
+    if (e.frame > 10) explosions.splice(explosions.indexOf(e), 1);
   });
 }
 
-// 🖼️ رسم
+// رسم
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.drawImage(playerImg,player.x,player.y,player.w,player.h);
 
+  // بازیکن
+  ctx.drawImage(playerImg, player.x, player.y, player.w, player.h);
+
+  // آیتم‌ها
   reds.forEach(r=>{
     ctx.save();
-    if(r.caught){ ctx.globalAlpha = r.alpha; ctx.filter = "blur(2px)"; }
-    ctx.drawImage(redImg,r.x,r.y,r.w,r.h);
+    if (r.caught) { ctx.globalAlpha = r.alpha; ctx.filter = "blur(2px)"; }
+    ctx.drawImage(redImg, r.x, r.y, r.w, r.h);
     ctx.restore();
   });
+  obstacles.forEach(o=> ctx.drawImage(obstacleImg, o.x, o.y, o.w, o.h));
+  greens.forEach(g=> ctx.drawImage(greenImg, g.x, g.y, g.w, g.h));
+  blues.forEach(b=> ctx.drawImage(blueImg, b.x, b.y, b.w, b.h));
+  bullets.forEach(b=> ctx.drawImage(bulletImg, b.x, b.y, b.w, b.h));
 
-  obstacles.forEach(o=>ctx.drawImage(obstacleImg,o.x,o.y,o.w,o.h));
-  greens.forEach(g=>ctx.drawImage(greenImg,g.x,g.y,g.w,g.h));
-  blues.forEach(b=>ctx.drawImage(blueImg,b.x,b.y,b.w,b.h));
-  bullets.forEach(b=>ctx.drawImage(bulletImg,b.x,b.y,b.w,b.h));
+  // انفجار
+  explosions.forEach(e=> ctx.drawImage(explosionImg, e.x, e.y, itemSize, itemSize));
 
-  explosions.forEach(e=>{
-    ctx.drawImage(explosionImg, e.x, e.y, itemSize, itemSize);
-  });
+  // UI
+  ctx.fillStyle = "black"; ctx.font = "20px Arial";
+  ctx.fillText(`Score: ${score}`, 10, 30);
+  ctx.fillText(`Pizza Chance: ${(pizzaProbability*100).toFixed(0)}%`, 10, 60);
+  ctx.fillText(`Ammo: ${ammo}`, 10, 90);
 
-  ctx.fillStyle="black"; ctx.font="20px Arial";
-  ctx.fillText(`Score: ${score}`,10,30);
-  ctx.fillText(`Pizza Chance: ${(pizzaProbability*100).toFixed(0)}%`,10,60);
-  ctx.fillText(`Ammo: ${ammo}`,10,90);
-
-  if(!gameStarted){
+  // لودینگ + نوار پیشرفت
+  if (!gameStarted) {
     const percent = totalSounds ? Math.floor((loadedSounds / totalSounds) * 100) : 0;
-    ctx.font="24px Arial";
-    ctx.fillText(`Loading sounds... ${percent}%`, canvas.width/2-100, canvas.height/2);
-    ctx.fillText("Tap or Space to start!", canvas.width/2-100, canvas.height/2+40);
+    ctx.font = "24px Arial";
+    ctx.fillText(`Loading sounds... ${percent}%`, canvas.width/2 - 140, canvas.height/2 - 30);
+
+    const barW = Math.floor(canvas.width * 0.6);
+    const barH = 12;
+    const bx = (canvas.width - barW) / 2;
+    const by = canvas.height / 2;
+    ctx.fillStyle = "#ddd"; ctx.fillRect(bx, by, barW, barH);
+    ctx.fillStyle = "#4caf50"; ctx.fillRect(bx, by, Math.floor(barW * (percent/100)), barH);
+    ctx.strokeStyle = "#333"; ctx.strokeRect(bx, by, barW, barH);
+
+    ctx.fillStyle = "#000";
+    ctx.fillText("Tap or Space to start!", canvas.width/2 - 120, by + 40);
   }
 
-  if(gameOver){
-    ctx.font="40px Arial"; ctx.fillText("Game Over!",canvas.width/2-100,canvas.height/2);
-    ctx.font="20px Arial"; ctx.fillText("Tap or Space to Restart",canvas.width/2-130,canvas.height/2+40);
+  // گیم‌اور
+  if (gameOver) {
+    ctx.font = "40px Arial"; ctx.fillText("Game Over!", canvas.width/2 - 120, canvas.height/2);
+    ctx.font = "20px Arial"; ctx.fillText("Tap or Space to Restart", canvas.width/2 - 150, canvas.height/2 + 40);
   }
 }
 
-// 🔁 ریستارت
+// ریستارت
 function restartGame(){
-  reds=[]; obstacles=[]; greens=[]; blues=[]; bullets=[]; explosions=[];
-  score=0; ammo=0; pizzaProbability=0.3; gameOver=false;
+  reds = []; obstacles = []; greens = []; blues = []; bullets = []; explosions = [];
+  score = 0; ammo = 0; pizzaProbability = 0.3; gameOver = false;
 }
 
-//
+// تایمرهای اسپاون (فقط وقتی بازی شروع شده)
+setInterval(()=>{ if (gameStarted && Math.random() < pizzaProbability) spawnRed(); }, 1500);
+setInterval(()=>{ if (gameStarted) spawnObstacle(); }, 3000);
+setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnGreen(); }, 5000);
+setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
+
+// حلقه‌ی اصلی بازی
+(function gameLoop(){
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+})();

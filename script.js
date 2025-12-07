@@ -44,8 +44,16 @@ let score = 0, gameOver = false;
 let pizzaProbability = 0.3;
 
 // 🎵 صداها
-const pizzaSounds = [new Audio("1.mp3"), new Audio("2.mp3"), new Audio("3.mp3"), new Audio("4.mp3"), new Audio("4.mp3")];
+const pizzaSounds = [new Audio Audio("2.mp3"), new Audio("3.mp3"), new Audio("5.mp3"), new Audio("6.mp3")];
 const gameOverSounds = [new Audio("sounds/gameover1.ogg"), new Audio("sounds/gameover1.ogg")];
+    // 🎵 صدا برای DRUG
+    const drugSound = new Audio("1.mp3");
+    
+    function playDrugSound() {
+      drugSound.currentTime = 0; // از اول پخش بشه
+      drugSound.play();
+    }
+
 
 function playRandomSound(arr) {
   const i = Math.floor(Math.random() * arr.length);
@@ -116,23 +124,15 @@ function update() {
     if (o.y > canvas.height) obstacles.splice(obstacles.indexOf(o), 1);
   });
 
-  greens.forEach(g => {
-    g.y += 3;
-    if (isColliding(player, g)) {
-      pizzaProbability = Math.max(0.1, pizzaProbability - 0.1);
-      greens.splice(greens.indexOf(g), 1);
-    }
-    if (g.y > canvas.height) greens.splice(greens.indexOf(g), 1);
-  });
-
-  blues.forEach(b => {
-    b.y += 3;
-    if (isColliding(player, b)) {
-      pizzaProbability = Math.min(0.9, pizzaProbability + 0.1);
-      blues.splice(blues.indexOf(b), 1);
-    }
-    if (b.y > canvas.height) blues.splice(blues.indexOf(b), 1);
-  });
+   greens
+    blues.forEach(b => {
+      b.y += 3;
+      if (isColliding(player, b)) {
+        pizzaProbability = Math.min(0.9, pizzaProbability + 0.1);
+        blues.splice(blues.indexOf(b), 1);
+      }
+      if (b.y > canvas.height) blues.splice(blues.indexOf(b), 1);
+    });
 }
 
 // رسم
@@ -182,4 +182,5 @@ function gameLoop() {
   update(); draw(); requestAnimationFrame(gameLoop);
 }
 gameLoop();
+
 

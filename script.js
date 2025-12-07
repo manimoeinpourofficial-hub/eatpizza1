@@ -15,27 +15,20 @@ let bulletSize = 20;
 // ریسپانسیو و وسط‌چین
 function resizeCanvas() {
   const ratio = window.devicePixelRatio || 1;
-
-  // ابعاد کانواس محدود و ریسپانسیو
-  const targetWidth = Math.min(window.innerWidth, 800);
-  const targetHeight = Math.min(window.innerHeight, 600);
-
-  canvas.width = targetWidth * ratio;
-  canvas.height = targetHeight * ratio;
-  canvas.style.width = targetWidth + "px";
-  canvas.style.height = targetHeight + "px";
+  canvas.width = window.innerWidth * ratio;
+  canvas.height = window.innerHeight * ratio;
+  canvas.style.width = window.innerWidth + "px";
+  canvas.style.height = window.innerHeight + "px";
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-  // بازیکن وسط کانواس
   const scale = isMobile ? 0.12 : 0.25;
-  const size = Math.max(60, Math.min(targetWidth * scale, isMobile ? 120 : 180));
+  const size = Math.max(60, Math.min(window.innerWidth * scale, isMobile ? 120 : 180));
   player.w = player.h = size;
-  player.y = targetHeight - player.h - (isMobile ? 40 : 0);
-  player.x = (targetWidth - player.w) / 2;
+  player.y = window.innerHeight - player.h - (isMobile ? 40 : 0);
+  player.x = (window.innerWidth - player.w) / 2;
 
-  // آیتم‌ها ریسپانسیو
-  itemSize = isMobile ? Math.floor(targetWidth * 0.05) : Math.floor(targetWidth * 0.08);
-  bulletSize = isMobile ? Math.floor(targetWidth * 0.02) : Math.floor(targetWidth * 0.03);
+  itemSize = isMobile ? Math.floor(window.innerWidth * 0.05) : Math.floor(window.innerWidth * 0.08);
+  bulletSize = isMobile ? Math.floor(window.innerWidth * 0.02) : Math.floor(window.innerWidth * 0.03);
 }
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
@@ -90,7 +83,7 @@ function processQueue() {
 
 // کنترل حرکت
 function move(x) {
-  player.x = Math.max(0, Math.min(x - player.w / 2, canvas.width/ (window.devicePixelRatio||1) - player.w));
+  player.x = Math.max(0, Math.min(x - player.w / 2, canvas.width/(window.devicePixelRatio||1) - player.w));
 }
 canvas.addEventListener("mousemove", e => {
   const rect = canvas.getBoundingClientRect();
@@ -146,11 +139,28 @@ function shoot() {
   }
 }
 
-// اسپاون آیتم‌ها
-function spawnRed() { reds.push({ x: Math.random() * (canvas.width/(window.devicePixelRatio||1) - itemSize), y: -itemSize, w: itemSize, h: itemSize, alpha:1, caught:false }); }
-function spawnObstacle() { obstacles.push({ x: Math.random() * (canvas.width/(window.devicePixelRatio||1) - itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
-function spawnGreen() { greens.push({ x: Math.random() * (canvas.width/(window.devicePixelRatio||1) - itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
-function spawnBlue() { blues.push({ x: Math.random() * (canvas.width/(window.devicePixelRatio||1) - itemSize), y: -itemSize, w: itemSize+15, h: itemSize+15 }); }
+// اسپاون آیتم‌ها با وسط‌چین
+function getCanvasBounds() {
+  const rect = canvas.getBoundingClientRect();
+  return { width: rect.width, height: rect.height };
+}
+
+function spawnRed() {
+  const { width } = getCanvasBounds();
+  reds.push({ x: Math.random() * (width - itemSize), y: -itemSize, w: itemSize, h: itemSize, alpha:1, caught:false });
+}
+function spawnObstacle() {
+  const { width } = getCanvasBounds();
+  obstacles.push({ x: Math.random() * (width - itemSize), y: -itemSize, w: itemSize, h: itemSize });
+}
+function spawnGreen() {
+  const { width } = getCanvasBounds();
+  greens.push({ x: Math.random() * (width - itemSize), y: -itemSize, w: itemSize, h: itemSize });
+}
+function spawnBlue() {
+  const { width } = getCanvasBounds();
+  blues.push({ x: Math.random() * (width - itemSize), y: -itemSize, w: itemSize+15, h: itemSize+15 });
+}
 
 // برخورد
 function isColliding(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
@@ -191,10 +201,10 @@ function update(){
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
       const bb = { x: b.x, y: b.y, w: b.w, h: b.h };
-      
-            if (isColliding(bb, o)) {
+      if (isColliding(bb, o)) {
         explosions.push({ x: o.x, y: o.y, frame: 0 });
-        playSound("explode");
+
+              playSound("explode");
         obstacles.splice(i, 1);
         bullets.splice(bullets.indexOf(b), 1);
         score += 2;

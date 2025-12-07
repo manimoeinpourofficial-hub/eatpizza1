@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html lang="fa">
 <head>
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
   <meta charset="UTF-8">
   <title>Pizza Game</title>
   <style>
     body {
       margin: 0;
-      overflow: hidden;
-      background: #f0f0f0;
+      overflow: hidden; /* بلاک اسکرول */
+      background: url("background.jpg") no-repeat center center fixed; /* بک‌گراند */
+      background-size: cover; /* پر کردن صفحه */
+      touch-action: none; /* بلاک زوم و اسکرول روی موبایل */
     }
     #ammoDisplay {
       position: absolute;
@@ -24,6 +25,7 @@
       display: block;
     }
   </style>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
 <body>
   <!-- نمایش آیکون تیر -->
@@ -38,4 +40,3 @@
   <script src="script.js" defer></script>
 </body>
 </html>
-

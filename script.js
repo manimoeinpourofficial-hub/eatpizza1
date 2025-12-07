@@ -28,13 +28,13 @@ resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
 // 🎨 تصاویر
-const playerImg = new Image(); playerImg.src = "PIZZA-KHOOR.png";
-const obstacleImg = new Image(); obstacleImg.src = "shit.webp";
-const redImg = new Image(); redImg.src = "pizza1.png";
-const greenImg = new Image(); greenImg.src = "DRUG.png";
-const blueImg = new Image(); blueImg.src = "weed.webp";
-const bulletImg = new Image(); bulletImg.src = "bullet.png";
-const explosionImg = new Image(); explosionImg.src = "explosion.png"; // افکت ترکیدن
+const playerImg = new Image(); playerImg.src = "images/PIZZA-KHOOR.png";
+const obstacleImg = new Image(); obstacleImg.src = "images/shit.webp";
+const redImg = new Image(); redImg.src = "images/pizza1.png";
+const greenImg = new Image(); greenImg.src = "images/DRUG.png";
+const blueImg = new Image(); blueImg.src = "images/weed.webp";
+const bulletImg = new Image(); bulletImg.src = "images/bullet.png";
+const explosionImg = new Image(); explosionImg.src = "images/explosion.png"; // افکت ترکیدن
 
 // 🎵 صداها
 let loadedSounds = 0, totalSounds = 0;
@@ -46,13 +46,13 @@ function makeAudio(src) {
   return a;
 }
 const sounds = {
-  pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3"), makeAudio("6.mp3")],
+  pizza: [makeAudio("sounds/2.mp3"), makeAudio("sounds/3.mp3"), makeAudio("sounds/5.mp3"), makeAudio("sounds/6.mp3")],
   gameOver: [makeAudio("sounds/gameover1.ogg"), makeAudio("sounds/gameover2.ogg")],
-  drug: makeAudio("1.mp3"),
-  shit: makeAudio("4.mp3"),
-  explode: makeAudio("explode.mp3") // صدای ترکیدن
+  drug: makeAudio("sounds/1.mp3"),
+  shit: makeAudio("sounds/4.mp3"),
+  explode: makeAudio("sounds/explode.mp3")
 };
-const bgMusic = makeAudio("background.mp3");
+const bgMusic = makeAudio("sounds/background.mp3");
 bgMusic.loop = true;
 bgMusic.volume = 0.5;
 
@@ -112,7 +112,7 @@ function update(){
     r.y += 3;
     if(isColliding(player,r) && !r.caught){
       score++; r.caught = true; playSound("pizza");
-      if (score % 3 === 0) ammo++; // هر ۳ پیتزا یک تیر ذخیره
+      if (score % 3 === 0) ammo++;
     }
     if(r.caught){ r.alpha -= 0.05; if(r.alpha <= 0) reds.splice(reds.indexOf(r),1); }
     if(r.y > canvas.height && !r.caught){ gameOver = true; playSound("gameOver"); }
@@ -124,13 +124,11 @@ function update(){
     if(o.y > canvas.height) obstacles.splice(obstacles.indexOf(o),1);
   });
 
-  // گلوله‌ها
   bullets.forEach(b=>{
     b.y -= b.speed;
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
       if (isColliding(b, o)) {
-        // افکت ترکیدن
         explosions.push({ x: o.x, y: o.y, frame: 0 });
         playSound("explode");
         obstacles.splice(i, 1);
@@ -142,7 +140,6 @@ function update(){
     if (b.y + b.h < 0) bullets.splice(bullets.indexOf(b), 1);
   });
 
-  // افکت ترکیدن
   explosions.forEach(e=>{
     e.frame++;
     if(e.frame > 10) explosions.splice(explosions.indexOf(e),1);
@@ -166,7 +163,6 @@ function draw(){
   blues.forEach(b=>ctx.drawImage(blueImg,b.x,b.y,b.w,b.h));
   bullets.forEach(b=>ctx.drawImage(bulletImg,b.x,b.y,b.w,b.h));
 
-  // افکت ترکیدن
   explosions.forEach(e=>{
     ctx.drawImage(explosionImg, e.x, e.y, itemSize, itemSize);
   });
@@ -182,3 +178,14 @@ function draw(){
     ctx.fillText(`Loading sounds... ${percent}%`, canvas.width/2-100, canvas.height/2);
     ctx.fillText("Tap or Space to start!", canvas.width/2-100, canvas.height/2+40);
   }
+
+  if(gameOver){
+    ctx.font="40px Arial"; ctx.fillText("Game Over!",canvas.width/2-100,canvas.height/2);
+    ctx.font="20px Arial"; ctx.fillText("Tap or Space to Restart",canvas.width/2-130,canvas.height/2+40);
+  }
+}
+
+// 🔁 ریستارت
+function restartGame(){
+  reds=[]; obstacles=[]; greens=[]; blues=[]; bullets=[]; explosions=[];
+  score=0; ammo=0; pizzaProbability=0

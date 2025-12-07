@@ -203,14 +203,3 @@ function update(){
   });
 
   // عمر افکت انفجار
-  explosions.forEach(e=>{
-    e.frame++;
-    if (e.frame > 10) explosions.splice(explosions.indexOf(e), 1);
-  });
-}
-
-// رسم
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  ctx.drawImage(playerImg

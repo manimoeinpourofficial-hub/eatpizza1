@@ -3,18 +3,15 @@ const ctx = canvas.getContext("2d");
 
 const isMobile = window.innerWidth < 600;
 
-// وضعیت بازی
 let player = { x: 0, y: 0, w: 0, h: 0 };
 let reds = [], obstacles = [], greens = [], blues = [], bullets = [], explosions = [];
 let score = 0, ammo = 0;
 let gameOver = false, gameStarted = false;
 let pizzaProbability = 0.3;
 
-// سایزها
-const itemSize = isMobile ? 30 : 60;
-const bulletSize = isMobile ? 12 : 20;
+let itemSize = 60;
+let bulletSize = 20;
 
-// ریسپانسیو
 function resizeCanvas() {
   const ratio = window.devicePixelRatio || 1;
   canvas.width = window.innerWidth * ratio;
@@ -27,12 +24,14 @@ function resizeCanvas() {
   const size = Math.max(80, Math.min(window.innerWidth * scale, isMobile ? 120 : 180));
   player.w = player.h = size;
   player.y = window.innerHeight - player.h - (isMobile ? 40 : 0);
-  player.x = window.innerWidth / 2 - player.w / 2;
+  player.x = (window.innerWidth - player.w) / 2;
+
+  itemSize = isMobile ? Math.floor(window.innerWidth * 0.05) : Math.floor(window.innerWidth * 0.08);
+  bulletSize = isMobile ? Math.floor(window.innerWidth * 0.02) : Math.floor(window.innerWidth * 0.03);
 }
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
-// تصاویر
 const playerImg = new Image(); playerImg.src = "PIZZA-KHOOR.png";
 const obstacleImg = new Image(); obstacleImg.src = "shit.webp";
 const redImg = new Image(); redImg.src = "pizza1.png";
@@ -41,7 +40,6 @@ const blueImg = new Image(); blueImg.src = "weed.webp";
 const bulletImg = new Image(); bulletImg.src = "bullet.png";
 const explosionImg = new Image(); explosionImg.src = "31.png";
 
-// صداها
 let loadedSounds = 0, totalSounds = 0;
 function makeAudio(src) {
   const a = new Audio(src);
@@ -61,7 +59,6 @@ const bgMusic = makeAudio("background.mp3");
 bgMusic.loop = true;
 bgMusic.volume = 0.5;
 
-// صف پخش صداها
 let soundQueue = [], isPlaying = false;
 function playSound(name) {
   if (!gameStarted) return;
@@ -80,9 +77,8 @@ function processQueue() {
   current.onended = () => { isPlaying = false; processQueue(); };
 }
 
-// کنترل حرکت
 function move(x) {
-  player.x = Math.max(0, Math.min(x - player.w / 2, canvas.width - player.w));
+  player.x = Math.max(0, Math.min(x - player.w / 2, window.innerWidth - player.w));
 }
 canvas.addEventListener("mousemove", e => {
   const rect = canvas.getBoundingClientRect();
@@ -93,7 +89,6 @@ canvas.addEventListener("touchmove", e => {
   move(e.touches[0].clientX - rect.left);
 }, { passive: true });
 
-// دوبار لمس برای شلیک روی موبایل
 let touchCount = 0;
 canvas.addEventListener("touchstart", () => {
   if (!gameStarted) {
@@ -110,7 +105,6 @@ canvas.addEventListener("touchstart", () => {
   }
 }, { passive: true });
 
-// Space برای دسکتاپ
 window.addEventListener("keydown", e => {
   if (e.code === "Space") {
     if (!gameStarted) {
@@ -124,7 +118,6 @@ window.addEventListener("keydown", e => {
   }
 });
 
-// شلیک
 function shoot() {
   if (ammo > 0) {
     ammo--;
@@ -138,7 +131,6 @@ function shoot() {
   }
 }
 
-// اسپاون
 function spawnRed() {
   reds.push({
     x: Math.random() * (window.innerWidth - itemSize),
@@ -149,7 +141,6 @@ function spawnRed() {
     caught: false
   });
 }
-
 function spawnObstacle() {
   obstacles.push({
     x: Math.random() * (window.innerWidth - itemSize),
@@ -158,7 +149,6 @@ function spawnObstacle() {
     h: itemSize
   });
 }
-
 function spawnGreen() {
   greens.push({
     x: Math.random() * (window.innerWidth - itemSize),
@@ -167,7 +157,6 @@ function spawnGreen() {
     h: itemSize
   });
 }
-
 function spawnBlue() {
   blues.push({
     x: Math.random() * (window.innerWidth - itemSize),
@@ -176,47 +165,39 @@ function spawnBlue() {
     h: itemSize + 15
   });
 }
-// برخورد
+
 function isColliding(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
-// آپدیت
 function update(){
   if (gameOver || !gameStarted) return;
 
-  // پیتزاها
   reds.forEach(r=>{
     r.y += 3;
     if (isColliding(player, r) && !r.caught) {
       score++; r.caught = true; playSound("pizza");
-      if (score % 2 === 0) { // هر ۲ پیتزا یک تیر
-        ammo++;
-        updateAmmoDisplay();
-      }
+      if (score % 2 === 0) { ammo++; updateAmmoDisplay(); }
     }
     if (r.caught) { r.alpha -= 0.05; if (r.alpha <= 0) reds.splice(reds.indexOf(r), 1); }
-    if (r.y > canvas.height && !r.caught) { gameOver = true; playSound("gameOver"); }
+    if (r.y > window.innerHeight && !r.caught) { gameOver = true; playSound("gameOver"); }
   });
 
-  // مانع‌ها
   obstacles.forEach(o=>{
     o.y += 3;
     if (isColliding(player, o)) { gameOver = true; playSound("shit"); playSound("gameOver"); }
-    if (o.y > canvas.height) obstacles.splice(obstacles.indexOf(o), 1);
+    if (o.y > window.innerHeight) obstacles.splice(obstacles.indexOf(o), 1);
   });
 
-  // پاورآپ‌ها
   greens.forEach(g=>{
     g.y += 3;
     if (isColliding(player, g)) { pizzaProbability = Math.max(0.05, pizzaProbability - 0.15); playSound("drug"); greens.splice(greens.indexOf(g),1); }
-    if (g.y > canvas.height) greens.splice(greens.indexOf(g),1);
+    if (g.y > window.innerHeight) greens.splice(greens.indexOf(g),1);
   });
   blues.forEach(b=>{
     b.y += 3;
     if (isColliding(player, b)) { pizzaProbability = Math.min(0.9, pizzaProbability + 0.1); blues.splice(blues.indexOf(b),1); }
-    if (b.y > canvas.height) blues.splice(blues.indexOf(b),1);
+    if (b.y > window.innerHeight) blues.splice(blues.indexOf(b),1);
   });
 
-  // گلوله‌ها + برخورد با مانع
   bullets.forEach(b=>{
     b.y -= b.speed;
     for (let i = 0; i < obstacles.length; i++) {
@@ -234,12 +215,12 @@ function update(){
     if (b.y + b.h < 0) bullets.splice(bullets.indexOf(b), 1);
   });
 
-
-        // عمر افکت انفجار
   explosions.forEach(e=>{
     e.frame++;
     if (e.frame > 10) explosions.splice(explosions.indexOf(e), 1);
   });
+}
+
 }
 
 // رسم
@@ -309,4 +290,3 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
   draw();
   requestAnimationFrame(gameLoop);
 })();
-

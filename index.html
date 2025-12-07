@@ -1,42 +1,40 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pizza Game</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden; /* بلاک اسکرول */
-      background: url("background.jpg") no-repeat center center fixed; /* بک‌گراند */
-      background-size: cover; /* پر کردن صفحه */
-      touch-action: none; /* بلاک زوم و اسکرول روی موبایل */
-    }
-    #ammoDisplay {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 10;
-    }
-    #ammoIcon {
-      width: 40px;
-      display: none; /* اول مخفی باشه */
-    }
-    canvas {
-      display: block;
-    }
-  </style>
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <title>Catch the Reds</title>
+
+  <!-- جلوگیری از زوم و اسکرول -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- نمایش آیکون تیر -->
-  <div id="ammoDisplay">
-    <img id="ammoIcon" src="bullet.png" alt="Ammo">
-  </div>
+  <!-- لایه بکگراند -->
+  <div class="bg"></div>
 
-  <!-- کانواس بازی -->
+  <!-- بوم بازی -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- اسکریپت بازی -->
-  <script src="script.js" defer></script>
+  <script src="script.js"></script>
+
+  <div id="ammoDisplay">
+  <img id="ammoIcon" src="bullet.png" style="width:40px; display:none;">
+</div>
+<canvas id="gameCanvas"></canvas>
+  <!-- جلوگیری از اسکرول و زوم -->
+  <script>
+    const blockEvent = e => { e.preventDefault(); e.stopPropagation(); };
+
+    window.addEventListener('wheel', blockEvent, { passive: false });
+    window.addEventListener('touchmove', blockEvent, { passive: false });
+    window.addEventListener('gesturestart', blockEvent, { passive: false });
+
+    window.addEventListener('keydown', e => {
+      const keys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','PageUp','PageDown','Home','End'];
+      if (keys.includes(e.code)) blockEvent(e);
+    });
+  </script>
 </body>
 </html>

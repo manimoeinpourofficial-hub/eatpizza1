@@ -43,17 +43,30 @@ let reds = [], obstacles = [], greens = [], blues = [];
 let score = 0, gameOver = false;
 let pizzaProbability = 0.3;
 
-// 🎵 صداها
-const pizzaSounds = [new Audio Audio("2.mp3"), new Audio("3.mp3"), new Audio("5.mp3"), new Audio("6.mp3")];
-const gameOverSounds = [new Audio("sounds/gameover1.ogg"), new Audio("sounds/gameover1.ogg")];
-    // 🎵 صدا برای DRUG
-    const drugSound = new Audio("1.mp3");
-    
-    function playDrugSound() {
-      drugSound.currentTime = 0; // از اول پخش بشه
-      drugSound.play();
-    }
+// 🎵 مدیریت همه صداها در یک آبجکت
+const sounds = {
+  pizza: [new Audio("2.mp3"), new Audio("3.mp3"), new Audio("5.mp3"), new Audio("6.mp3")],
+  gameOver: [new Audio("sounds/gameover1.ogg"), new Audio("sounds/gameover2.ogg")],
+  drug: new Audio("1.mp3"),
+  shit: new Audio("4.mp3")
+};
 
+// تابع عمومی برای پخش صدا
+function playSound(name) {
+  const s = sounds[name];
+  if (!s) return;
+
+  if (Array.isArray(s)) {
+    // اگر چندتا صدا هست → یکی رندوم پخش بشه
+    const i = Math.floor(Math.random() * s.length);
+    s[i].currentTime = 0;
+    s[i].play();
+  } else {
+    // اگر یک صدا هست → همون پخش بشه
+    s.currentTime = 0;
+    s.play();
+  }
+}
 
 function playRandomSound(arr) {
   const i = Math.floor(Math.random() * arr.length);
@@ -116,13 +129,15 @@ function update() {
     }
   });
 
-  obstacles.forEach(o => {
-    o.y += 4;
-    if (isColliding(player, o)) {
-      gameOver = true; playRandomSound(gameOverSounds);
-    }
-    if (o.y > canvas.height) obstacles.splice(obstacles.indexOf(o), 1);
-  });
+obstacles.forEach(o => {
+  o.y += o.speed;
+  if (isColliding(player, o)) {
+    gameOver = true;
+    playShitSound(); // اینجا صدا پخش میشه
+    playRandomSound(gameOverSounds);
+  }
+  if (o.y > canvas.height) obstacles.splice(obstacles.indexOf(o), 1);
+});
 
    greens
     blues.forEach(b => {
@@ -182,5 +197,6 @@ function gameLoop() {
   update(); draw(); requestAnimationFrame(gameLoop);
 }
 gameLoop();
+
 
 

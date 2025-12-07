@@ -48,7 +48,7 @@ function makeAudio(src) {
 }
 const sounds = {
   pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3"), makeAudio("6.mp3")],
-  gameOver: [makeAudio("sounds/gameover1.ogg"), makeAudio("sounds/gameover2.ogg")],
+  gameOver: //[makeAudio("sounds/gameover1.ogg"), makeAudio("sounds/gameover2.ogg")],
   drug: makeAudio("1.mp3"),
   shit: makeAudio("4.mp3")
 };
@@ -250,3 +250,4 @@ setInterval(()=>{ if(gameStarted && Math.random() < 0.2) spawnBlue(); },7000);
 
 // main loop
 (function gameLoop(){ update(); draw(); requestAnimationFrame(gameLoop); })();
+

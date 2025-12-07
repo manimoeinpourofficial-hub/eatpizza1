@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa">
 <head>
   <meta charset="UTF-8">
   <title>Catch the Reds</title>
@@ -8,21 +8,45 @@
   <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      margin: 0;
+      background: url("background.jpg") no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      justify-content: center; /* وسط افقی */
+      align-items: center;     /* وسط عمودی */
+      height: 100vh;
+      overflow: hidden;
+      touch-action: none;
+    }
+    #ammoDisplay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+    }
+    #ammoIcon {
+      width: 40px;
+      display: none;
+    }
+    canvas {
+      background: transparent;
+    }
+  </style>
 </head>
 <body>
-  <!-- لایه بکگراند -->
-  <div class="bg"></div>
+  <!-- نمایش آیکون تیر -->
+  <div id="ammoDisplay">
+    <img id="ammoIcon" src="bullet.png" alt="Ammo">
+  </div>
 
-  <!-- بوم بازی -->
+  <!-- کانواس بازی -->
   <canvas id="gameCanvas"></canvas>
 
+  <!-- اسکریپت بازی -->
   <script src="script.js"></script>
 
-  <div id="ammoDisplay">
-  <img id="ammoIcon" src="bullet.png" style="width:40px; display:none;">
-</div>
-<canvas id="gameCanvas"></canvas>
   <!-- جلوگیری از اسکرول و زوم -->
   <script>
     const blockEvent = e => { e.preventDefault(); e.stopPropagation(); };

@@ -46,6 +46,52 @@ function playSound(name) {
   } else { s.currentTime = 0; s.play(); }
 }
 
+// 🎵 صدای بکگراند
+const bgMusic = new Audio("background.mp3");
+bgMusic.loop = true; // تکرار همیشگی
+bgMusic.volume = 0.5; // ولوم اولیه
+bgMusic.play();
+
+// کنترل ولوم بکگراند
+function setBgVolume(value) {
+  bgMusic.volume = Math.max(0, Math.min(1, value));
+}
+
+// 🎶 مدیریت صف صداها
+let soundQueue = [];
+let isPlaying = false;
+
+function playSound(name) {
+  const s = sounds[name];
+  if (!s) return;
+
+  let audio;
+  if (Array.isArray(s)) {
+    const i = Math.floor(Math.random() * s.length);
+    audio = s[i].cloneNode(); // کپی تا تداخل نشه
+  } else {
+    audio = s.cloneNode();
+  }
+
+  soundQueue.push(audio);
+  processQueue();
+}
+
+function processQueue() {
+  if (isPlaying || soundQueue.length === 0) return;
+
+  const current = soundQueue.shift();
+  isPlaying = true;
+  current.currentTime = 0;
+  current.play();
+
+  current.onended = () => {
+    isPlaying = false;
+    processQueue(); // بعدی رو پخش کن
+  };
+}
+
+
 // 🕹️ کنترل بازیکن
 function move(x) {
   player.x = Math.max(0, Math.min(x - player.w / 2, canvas.width - player.w));
@@ -157,3 +203,4 @@ setInterval(()=>{if(Math.random()<0.2)spawnBlue();},7000);
 
 // 🚀 اجرا
 (function gameLoop(){update();draw();requestAnimationFrame(gameLoop);})();
+

@@ -3,23 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <title>Catch the Reds</title>
-
-  <!-- جلوگیری از زوم و اسکرول -->
   <meta name="viewport"
         content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <style>
     body {
       margin: 0;
-      background: url("background.jpg") no-repeat center center fixed;
-      background-size: cover;
-      display: flex;
-      justify-content: center; /* وسط افقی */
-      align-items: center;     /* وسط عمودی */
       height: 100vh;
       overflow: hidden;
       touch-action: none;
+      display: flex;
+      justify-content: center; /* وسط افقی */
+      align-items: center;     /* وسط عمودی */
     }
+
+    /* بکگراند جدا */
+    .bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: url("background.jpg") repeat;
+      background-size: cover;
+      z-index: -1; /* پشت کانواس */
+    }
+
     #ammoDisplay {
       position: absolute;
       top: 10px;
@@ -30,12 +38,18 @@
       width: 40px;
       display: none;
     }
+
     canvas {
       background: transparent;
+      max-width: 100%;
+      max-height: 100%;
     }
   </style>
 </head>
 <body>
+  <!-- بکگراند -->
+  <div class="bg"></div>
+
   <!-- نمایش آیکون تیر -->
   <div id="ammoDisplay">
     <img id="ammoIcon" src="bullet.png" alt="Ammo">
@@ -46,19 +60,5 @@
 
   <!-- اسکریپت بازی -->
   <script src="script.js"></script>
-
-  <!-- جلوگیری از اسکرول و زوم -->
-  <script>
-    const blockEvent = e => { e.preventDefault(); e.stopPropagation(); };
-
-    window.addEventListener('wheel', blockEvent, { passive: false });
-    window.addEventListener('touchmove', blockEvent, { passive: false });
-    window.addEventListener('gesturestart', blockEvent, { passive: false });
-
-    window.addEventListener('keydown', e => {
-      const keys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','PageUp','PageDown','Home','End'];
-      if (keys.includes(e.code)) blockEvent(e);
-    });
-  </script>
 </body>
 </html>

@@ -139,11 +139,43 @@ function shoot() {
 }
 
 // اسپاون
-function spawnRed(){ reds.push({ x: Math.random()*(canvas.width-itemSize), y: -itemSize, w: itemSize, h: itemSize, alpha:1, caught:false }); }
-function spawnObstacle(){ obstacles.push({ x: Math.random()*(canvas.width-itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
-function spawnGreen(){ greens.push({ x: Math.random()*(canvas.width-itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
-function spawnBlue(){ blues.push({ x: Math.random()*(canvas.width-itemSize), y: -itemSize, w: itemSize+15, h: itemSize+15 }); }
+function spawnRed() {
+  reds.push({
+    x: Math.random() * (window.innerWidth - itemSize),
+    y: -itemSize,
+    w: itemSize,
+    h: itemSize,
+    alpha: 1,
+    caught: false
+  });
+}
 
+function spawnObstacle() {
+  obstacles.push({
+    x: Math.random() * (window.innerWidth - itemSize),
+    y: -itemSize,
+    w: itemSize,
+    h: itemSize
+  });
+}
+
+function spawnGreen() {
+  greens.push({
+    x: Math.random() * (window.innerWidth - itemSize),
+    y: -itemSize,
+    w: itemSize,
+    h: itemSize
+  });
+}
+
+function spawnBlue() {
+  blues.push({
+    x: Math.random() * (window.innerWidth - itemSize),
+    y: -itemSize,
+    w: itemSize + 15,
+    h: itemSize + 15
+  });
+}
 // برخورد
 function isColliding(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
@@ -277,3 +309,4 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
   draw();
   requestAnimationFrame(gameLoop);
 })();
+

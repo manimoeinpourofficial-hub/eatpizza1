@@ -220,7 +220,6 @@ function update(){
   });
 }
 
-// رسم
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
@@ -242,6 +241,7 @@ function draw(){
 
   // UI
   ctx.fillStyle = "black"; ctx.font = "20px Arial";
+  ctx.textAlign = "left"; ctx.textBaseline = "top";
   ctx.fillText(`Score: ${score}`, 10, 30);
   ctx.fillText(`Pizza Chance: ${(pizzaProbability*100).toFixed(0)}%`, 10, 60);
   ctx.fillText(`Ammo: ${ammo}`, 10, 90);
@@ -249,15 +249,34 @@ function draw(){
   // لودینگ
   if (!gameStarted) {
     const percent = totalSounds ? Math.floor((loadedSounds / totalSounds) * 100) : 0;
+
     ctx.font = "24px Arial";
-    ctx.fillText(`Loading sounds... ${percent}%`, canvas.width/2 - 140, canvas.height/2 - 30);
-    ctx.fillText("Tap or Space to start!", canvas.width/2 - 120, canvas.height/2 + 40);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`Loading sounds... ${percent}%`, canvas.width/2, canvas.height/2 - 80);
+    ctx.fillText("Tap or Space to start!", canvas.width/2, canvas.height/2 + 60);
+
+    // نوار پیشرفت
+    const barWidth = canvas.width * 0.6;   // 60% عرض کانواس
+    const barHeight = 20;
+    const barX = canvas.width/2 - barWidth/2;
+    const barY = canvas.height/2 - 20;
+
+    ctx.strokeStyle = "black";
+    ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+    ctx.fillStyle = "green";
+    ctx.fillRect(barX, barY, barWidth * (percent/100), barHeight);
   }
 
   // گیم‌اور
   if (gameOver) {
-    ctx.font = "40px Arial"; ctx.fillText("Game Over!", canvas.width/2 - 120, canvas.height/2);
-    ctx.font = "20px Arial"; ctx.fillText("Tap or Space to Restart", canvas.width/2 - 150, canvas.height/2 + 40);
+    ctx.font = "40px Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Game Over!", canvas.width/2, canvas.height/2);
+    ctx.font = "20px Arial";
+    ctx.fillText("Tap or Space to Restart", canvas.width/2, canvas.height/2 + 50);
   }
 }
 
@@ -287,3 +306,4 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
   draw();
   requestAnimationFrame(gameLoop);
 })();
+

@@ -34,7 +34,7 @@ const redImg = new Image(); redImg.src = "images/pizza1.png";
 const greenImg = new Image(); greenImg.src = "images/DRUG.png";
 const blueImg = new Image(); blueImg.src = "images/weed.webp";
 const bulletImg = new Image(); bulletImg.src = "images/bullet.png";
-const explosionImg = new Image(); explosionImg.src = "images/explosion.png"; // افکت ترکیدن
+const explosionImg = new Image(); explosionImg.src = "images/explosion.png";
 
 // 🎵 صداها
 let loadedSounds = 0, totalSounds = 0;
@@ -188,4 +188,7 @@ function draw(){
 // 🔁 ریستارت
 function restartGame(){
   reds=[]; obstacles=[]; greens=[]; blues=[]; bullets=[]; explosions=[];
-  score=0; ammo=0; pizzaProbability=0
+  score=0; ammo=0; pizzaProbability=0.3; gameOver=false;
+}
+
+//

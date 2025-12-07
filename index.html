@@ -1,36 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa">
 <head>
   <meta charset="UTF-8">
-  <title>Catch the Reds</title>
-
-  <!-- جلوگیری از زوم و اسکرول -->
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-
-  <link rel="stylesheet" href="style.css">
+  <title>Pizza Game</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#f0f0f0; }
+    #ammoDisplay {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 10;
+    }
+    #ammoIcon {
+      width: 40px;
+      display: none; /* اول مخفی باشه */
+    }
+    canvas {
+      display:block;
+    }
+  </style>
 </head>
 <body>
-  <!-- لایه بکگراند -->
-  <div class="bg"></div>
+  <!-- نمایش آیکون تیر -->
+  <div id="ammoDisplay">
+    <img id="ammoIcon" src="bullet.png" alt="Ammo">
+  </div>
 
-  <!-- بوم بازی -->
+  <!-- کانواس بازی -->
   <canvas id="gameCanvas"></canvas>
 
+  <!-- اسکریپت بازی -->
   <script src="script.js"></script>
-
-  <!-- جلوگیری از اسکرول و زوم -->
-  <script>
-    const blockEvent = e => { e.preventDefault(); e.stopPropagation(); };
-
-    window.addEventListener('wheel', blockEvent, { passive: false });
-    window.addEventListener('touchmove', blockEvent, { passive: false });
-    window.addEventListener('gesturestart', blockEvent, { passive: false });
-
-    window.addEventListener('keydown', e => {
-      const keys = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','PageUp','PageDown','Home','End'];
-      if (keys.includes(e.code)) blockEvent(e);
-    });
-  </script>
 </body>
 </html>

@@ -203,3 +203,78 @@ function update(){
   });
 
   // عمر افکت انفجار
+
+// ... (تمام کدی که خودت فرستادی تا خط انفجارها)
+
+// عمر افکت انفجار
+explosions.forEach(e => {
+  e.frame++;
+  if (e.frame > 10) explosions.splice(explosions.indexOf(e), 1);
+});
+}
+
+// رسم
+function draw(){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  ctx.drawImage(playerImg, player.x, player.y, player.w, player.h);
+
+  reds.forEach(r => {
+    ctx.save();
+    if (r.caught) { ctx.globalAlpha = r.alpha; ctx.filter = "blur(2px)"; }
+    ctx.drawImage(redImg, r.x, r.y, r.w, r.h);
+    ctx.restore();
+  });
+
+  obstacles.forEach(o => ctx.drawImage(obstacleImg, o.x, o.y, o.w, o.h));
+  greens.forEach(g => ctx.drawImage(greenImg, g.x, g.y, g.w, g.h));
+  blues.forEach(b => ctx.drawImage(blueImg, b.x, b.y, b.w, b.h));
+  bullets.forEach(b => ctx.drawImage(bulletImg, b.x, b.y, b.w, b.h));
+  explosions.forEach(e => ctx.drawImage(explosionImg, e.x, e.y, itemSize, itemSize));
+
+  ctx.fillStyle = "black"; ctx.font = "20px Arial";
+  ctx.fillText(`Score: ${score}`, 10, 30);
+  ctx.fillText(`Pizza Chance: ${(pizzaProbability * 100).toFixed(0)}%`, 10, 60);
+  ctx.fillText(`Ammo: ${ammo}`, 10, 90);
+
+  if (!gameStarted) {
+    const percent = totalSounds ? Math.floor((loadedSounds / totalSounds) * 100) : 0;
+    ctx.font = "24px Arial";
+    ctx.fillText(`Loading sounds... ${percent}%`, canvas.width / 2 - 140, canvas.height / 2 - 30);
+    ctx.fillText("Tap or Space to start!", canvas.width / 2 - 120, canvas.height / 2 + 40);
+  }
+
+  if (gameOver) {
+    ctx.font = "40px Arial";
+    ctx.fillText("Game Over!", canvas.width / 2 - 120, canvas.height / 2);
+    ctx.font = "20px Arial";
+    ctx.fillText("Tap or Space to Restart", canvas.width / 2 - 150, canvas.height / 2 + 40);
+  }
+}
+
+// نمایش آیکون تیر
+function updateAmmoDisplay() {
+  const ammoIcon = document.getElementById("ammoIcon");
+  if (!ammoIcon) return;
+  ammoIcon.style.display = ammo > 0 ? "inline" : "none";
+}
+
+// ریستارت بازی
+function restartGame() {
+  reds = []; obstacles = []; greens = []; blues = []; bullets = []; explosions = [];
+  score = 0; ammo = 0; pizzaProbability = 0.3; gameOver = false;
+  updateAmmoDisplay();
+}
+
+// تایمرهای اسپاون
+setInterval(() => { if (gameStarted && Math.random() < pizzaProbability) spawnRed(); }, 1500);
+setInterval(() => { if (gameStarted) spawnObstacle(); }, 3000);
+setInterval(() => { if (gameStarted && Math.random() < 0.2) spawnGreen(); }, 5000);
+setInterval(() => { if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
+
+// حلقه‌ی اصلی بازی
+(function gameLoop(){
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+})();

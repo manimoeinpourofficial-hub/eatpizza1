@@ -34,7 +34,7 @@ const redImg = new Image(); redImg.src = "pizza1.png";
 const greenImg = new Image(); greenImg.src = "DRUG.png";
 const blueImg = new Image(); blueImg.src = "weed.webp";
 const bulletImg = new Image(); bulletImg.src = "bullet.png";
-const explosionImg = new Image(); explosionImg.src = "explosion.png";
+const explosionImg = new Image(); explosionImg.src = "31.png";
 
 // صداها (همه در روت)
 let loadedSounds = 0, totalSounds = 0;
@@ -47,10 +47,10 @@ function makeAudio(src) {
 }
 const sounds = {
   pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3"), makeAudio("6.mp3")],
-  gameOver: [makeAudio("gameover1.ogg"), makeAudio("gameover2.ogg")],
+  gameOver: [makeAudio("gameover.mp3")],
   drug: makeAudio("1.mp3"),
   shit: makeAudio("4.mp3"),
-  explode: makeAudio("explode.mp3")
+  explode: makeAudio("gooz1.mp3")
 };
 const bgMusic = makeAudio("background.mp3");
 bgMusic.loop = true;
@@ -265,3 +265,4 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
   draw();
   requestAnimationFrame(gameLoop);
 })();
+

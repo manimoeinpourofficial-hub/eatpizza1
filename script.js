@@ -44,7 +44,7 @@ let score = 0, gameOver = false;
 let pizzaProbability = 0.3;
 
 // 🎵 صداها
-const pizzaSounds = [new Audio("sounds/pizza1.ogg"), new Audio("sounds/pizza2.ogg")];
+const pizzaSounds = [new Audio("1.mp3"), new Audio("2.mp3"), new Audio("3.mp3"), new Audio("4.mp3"), new Audio("4.mp3")];
 const gameOverSounds = [new Audio("sounds/gameover1.ogg"), new Audio("sounds/gameover1.ogg")];
 
 function playRandomSound(arr) {
@@ -182,3 +182,4 @@ function gameLoop() {
   update(); draw(); requestAnimationFrame(gameLoop);
 }
 gameLoop();
+

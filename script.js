@@ -12,23 +12,30 @@ let pizzaProbability = 0.3;
 let itemSize = 60;
 let bulletSize = 20;
 
-// ریسپانسیو
+// ریسپانسیو و وسط‌چین
 function resizeCanvas() {
   const ratio = window.devicePixelRatio || 1;
-  canvas.width = window.innerWidth * ratio;
-  canvas.height = window.innerHeight * ratio;
-  canvas.style.width = window.innerWidth + "px";
-  canvas.style.height = window.innerHeight + "px";
+
+  // ابعاد کانواس محدود و ریسپانسیو
+  const targetWidth = Math.min(window.innerWidth, 800);
+  const targetHeight = Math.min(window.innerHeight, 600);
+
+  canvas.width = targetWidth * ratio;
+  canvas.height = targetHeight * ratio;
+  canvas.style.width = targetWidth + "px";
+  canvas.style.height = targetHeight + "px";
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
+  // بازیکن وسط کانواس
   const scale = isMobile ? 0.12 : 0.25;
-  const size = Math.max(80, Math.min(window.innerWidth * scale, isMobile ? 120 : 180));
+  const size = Math.max(60, Math.min(targetWidth * scale, isMobile ? 120 : 180));
   player.w = player.h = size;
-  player.y = window.innerHeight - player.h - (isMobile ? 40 : 0);
-  player.x = (window.innerWidth - player.w) / 2;
+  player.y = targetHeight - player.h - (isMobile ? 40 : 0);
+  player.x = (targetWidth - player.w) / 2;
 
-  itemSize = isMobile ? Math.floor(window.innerWidth * 0.05) : Math.floor(window.innerWidth * 0.08);
-  bulletSize = isMobile ? Math.floor(window.innerWidth * 0.02) : Math.floor(window.innerWidth * 0.03);
+  // آیتم‌ها ریسپانسیو
+  itemSize = isMobile ? Math.floor(targetWidth * 0.05) : Math.floor(targetWidth * 0.08);
+  bulletSize = isMobile ? Math.floor(targetWidth * 0.02) : Math.floor(targetWidth * 0.03);
 }
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
@@ -83,7 +90,7 @@ function processQueue() {
 
 // کنترل حرکت
 function move(x) {
-  player.x = Math.max(0, Math.min(x - player.w / 2, window.innerWidth - player.w));
+  player.x = Math.max(0, Math.min(x - player.w / 2, canvas.width/ (window.devicePixelRatio||1) - player.w));
 }
 canvas.addEventListener("mousemove", e => {
   const rect = canvas.getBoundingClientRect();
@@ -140,18 +147,10 @@ function shoot() {
 }
 
 // اسپاون آیتم‌ها
-function spawnRed() {
-  reds.push({ x: Math.random() * (window.innerWidth - itemSize), y: -itemSize, w: itemSize, h: itemSize, alpha:1, caught:false });
-}
-function spawnObstacle() {
-  obstacles.push({ x: Math.random() * (window.innerWidth - itemSize), y: -itemSize, w: itemSize, h: itemSize });
-}
-function spawnGreen() {
-  greens.push({ x: Math.random() * (window.innerWidth - itemSize), y: -itemSize, w: itemSize, h: itemSize });
-}
-function spawnBlue() {
-  blues.push({ x: Math.random() * (window.innerWidth - itemSize), y: -itemSize, w: itemSize+15, h: itemSize+15 });
-}
+function spawnRed() { reds.push({ x: Math.random() * (canvas.width/(window.devicePixelRatio||1) - itemSize), y: -itemSize, w: itemSize, h: itemSize, alpha:1, caught:false }); }
+function spawnObstacle() { obstacles.push({ x: Math.random() * (canvas.width/(window.devicePixelRatio||1) - itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
+function spawnGreen() { greens.push({ x: Math.random() * (canvas.width/(window.devicePixelRatio||1) - itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
+function spawnBlue() { blues.push({ x: Math.random() * (canvas.width/(window.devicePixelRatio||1) - itemSize), y: -itemSize, w: itemSize+15, h: itemSize+15 }); }
 
 // برخورد
 function isColliding(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
@@ -167,24 +166,24 @@ function update(){
       if (score % 2 === 0) { ammo++; updateAmmoDisplay(); }
     }
     if (r.caught) { r.alpha -= 0.05; if (r.alpha <= 0) reds.splice(reds.indexOf(r), 1); }
-    if (r.y > window.innerHeight && !r.caught) { gameOver = true; playSound("gameOver"); }
+    if (r.y > canvas.height/(window.devicePixelRatio||1) && !r.caught) { gameOver = true; playSound("gameOver"); }
   });
 
   obstacles.forEach(o=>{
     o.y += 3;
     if (isColliding(player, o)) { gameOver = true; playSound("shit"); playSound("gameOver"); }
-    if (o.y > window.innerHeight) obstacles.splice(obstacles.indexOf(o), 1);
+    if (o.y > canvas.height/(window.devicePixelRatio||1)) obstacles.splice(obstacles.indexOf(o), 1);
   });
 
   greens.forEach(g=>{
     g.y += 3;
     if (isColliding(player, g)) { pizzaProbability = Math.max(0.05, pizzaProbability - 0.15); playSound("drug"); greens.splice(greens.indexOf(g),1); }
-    if (g.y > window.innerHeight) greens.splice(greens.indexOf(g),1);
+    if (g.y > canvas.height/(window.devicePixelRatio||1)) greens.splice(greens.indexOf(g),1);
   });
   blues.forEach(b=>{
     b.y += 3;
     if (isColliding(player, b)) { pizzaProbability = Math.min(0.9, pizzaProbability + 0.1); blues.splice(blues.indexOf(b),1); }
-    if (b.y > window.innerHeight) blues.splice(blues.indexOf(b),1);
+    if (b.y > canvas.height/(window.devicePixelRatio||1)) blues.splice(blues.indexOf(b),1);
   });
 
   bullets.forEach(b=>{
@@ -192,7 +191,8 @@ function update(){
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
       const bb = { x: b.x, y: b.y, w: b.w, h: b.h };
-      if (isColliding(bb, o)) {
+      
+            if (isColliding(bb, o)) {
         explosions.push({ x: o.x, y: o.y, frame: 0 });
         playSound("explode");
         obstacles.splice(i, 1);
@@ -206,8 +206,7 @@ function update(){
 
   explosions.forEach(e=>{
     e.frame++;
-
-        if (e.frame > 10) explosions.splice(explosions.indexOf(e), 1);
+    if (e.frame > 10) explosions.splice(explosions.indexOf(e), 1);
   });
 }
 

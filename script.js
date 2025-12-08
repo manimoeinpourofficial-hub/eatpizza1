@@ -12,23 +12,28 @@ let pizzaProbability = 0.3;
 let itemSize = 60;
 let bulletSize = 20;
 
-// ریسپانسیو و وسط‌چین
 function resizeCanvas() {
   const ratio = window.devicePixelRatio || 1;
-  canvas.width = window.innerWidth * ratio;
-  canvas.height = window.innerHeight * ratio;
-  canvas.style.width = window.innerWidth + "px";
-  canvas.style.height = window.innerHeight + "px";
+  const maxWidth = 800;
+  const maxHeight = 600;
+  const targetWidth = Math.min(window.innerWidth, maxWidth);
+  const targetHeight = Math.min(window.innerHeight, maxHeight);
+
+  canvas.width = targetWidth * ratio;
+  canvas.height = targetHeight * ratio;
+  canvas.style.width = targetWidth + "px";
+  canvas.style.height = targetHeight + "px";
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
+  const canvasHeight = canvas.getBoundingClientRect().height;
   const scale = isMobile ? 0.12 : 0.25;
-  const size = Math.max(60, Math.min(window.innerWidth * scale, isMobile ? 120 : 180));
+  const size = Math.max(60, Math.min(targetWidth * scale, isMobile ? 120 : 180));
   player.w = player.h = size;
-  player.y = window.innerHeight - player.h - (isMobile ? 40 : 0);
-  player.x = (window.innerWidth - player.w) / 2;
+  player.x = (targetWidth - player.w) / 2;
+  player.y = canvasHeight - player.h - (isMobile ? 20 : 10);
 
-  itemSize = isMobile ? Math.floor(window.innerWidth * 0.05) : Math.floor(window.innerWidth * 0.08);
-  bulletSize = isMobile ? Math.floor(window.innerWidth * 0.02) : Math.floor(window.innerWidth * 0.03);
+  itemSize = isMobile ? Math.floor(targetWidth * 0.05) : Math.floor(targetWidth * 0.08);
+  bulletSize = isMobile ? Math.floor(targetWidth * 0.02) : Math.floor(targetWidth * 0.03);
 }
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
@@ -144,7 +149,6 @@ function getCanvasBounds() {
   const rect = canvas.getBoundingClientRect();
   return { width: rect.width, height: rect.height };
 }
-
 function spawnRed() {
   const { width } = getCanvasBounds();
   reds.push({ x: Math.random() * (width - itemSize), y: -itemSize, w: itemSize, h: itemSize, alpha:1, caught:false });
@@ -198,13 +202,13 @@ function update(){
 
   bullets.forEach(b=>{
     b.y -= b.speed;
-    for (let i = 0; i < obstacles.length; i++) {
-      const o = obstacles[i];
+    for (let i = 0; i < obstacles.length
+
+        const o = obstacles[i];
       const bb = { x: b.x, y: b.y, w: b.w, h: b.h };
       if (isColliding(bb, o)) {
         explosions.push({ x: o.x, y: o.y, frame: 0 });
-
-              playSound("explode");
+        playSound("explode");
         obstacles.splice(i, 1);
         bullets.splice(bullets.indexOf(b), 1);
         score += 2;
@@ -220,6 +224,7 @@ function update(){
   });
 }
 
+// رسم
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
@@ -257,7 +262,7 @@ function draw(){
     ctx.fillText("Tap or Space to start!", canvas.width/2, canvas.height/2 + 60);
 
     // نوار پیشرفت
-    const barWidth = canvas.width * 0.6;   // 60% عرض کانواس
+    const barWidth = canvas.width * 0.6;
     const barHeight = 20;
     const barX = canvas.width/2 - barWidth/2;
     const barY = canvas.height/2 - 20;
@@ -306,4 +311,3 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
   draw();
   requestAnimationFrame(gameLoop);
 })();
-

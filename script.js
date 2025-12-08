@@ -25,15 +25,15 @@ function resizeCanvas() {
   canvas.style.height = targetHeight + "px";
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-  const canvasHeight = canvas.getBoundingClientRect().height;
-  const scale = isMobile ? 0.12 : 0.25;
-  const size = Math.max(60, Math.min(targetWidth * scale, isMobile ? 120 : 180));
+  const canvasHeight = canvas.height / ratio;
+  const scale = isMobile ? 0.16 : 0.25; // موبایل کمی بزرگ‌تر
+  const size = Math.max(60, Math.min(targetWidth * scale, isMobile ? 140 : 180));
   player.w = player.h = size;
   player.x = (targetWidth - player.w) / 2;
-  player.y = canvasHeight - player.h - (isMobile ? 20 : 10);
+  player.y = canvasHeight - player.h - (isMobile ? 10 : 5);
 
-  itemSize = isMobile ? Math.floor(targetWidth * 0.05) : Math.floor(targetWidth * 0.08);
-  bulletSize = isMobile ? Math.floor(targetWidth * 0.02) : Math.floor(targetWidth * 0.03);
+  itemSize = Math.floor(player.w * 0.6);   // آیتم‌ها کوچیک‌تر از پلیر
+  bulletSize = Math.floor(player.w * 0.25);
 }
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
@@ -200,11 +200,10 @@ function update(){
     if (b.y > canvas.height/(window.devicePixelRatio||1)) blues.splice(blues.indexOf(b),1);
   });
 
-  bullets.forEach(b=>{
+    bullets.forEach(b=>{
     b.y -= b.speed;
-    for (let i = 0; i < obstacles.length
-
-        const o = obstacles[i];
+    for (let i = 0; i < obstacles.length; i++) {
+      const o = obstacles[i];
       const bb = { x: b.x, y: b.y, w: b.w, h: b.h };
       if (isColliding(bb, o)) {
         explosions.push({ x: o.x, y: o.y, frame: 0 });

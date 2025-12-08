@@ -1,23 +1,26 @@
 body {
   margin: 0;
   overflow: hidden;
+  background: #000; /* رنگ پایه پشت بکگراند */
 }
 
 /* بکگراند با opacity کم */
 .bg {
   position: fixed;
   top: 0; left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   background: url("pizzaback.jpg") no-repeat center center;
   background-size: cover;
   opacity: 0.10;   /* فقط بکگراند شفاف می‌شود */
-  z-index: -1;    /* پشت canvas قرار می‌گیرد */
+  z-index: -1;     /* پشت canvas قرار می‌گیرد */
 }
 
 /* خود canvas واضح باقی می‌ماند */
 canvas {
   display: block;
-  width: 100vw;
-  height: 100vh;
+  position: fixed;   /* مطمئن می‌شیم کل صفحه رو بپوشونه */
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
 }

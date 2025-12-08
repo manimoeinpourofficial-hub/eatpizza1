@@ -30,11 +30,12 @@ function resizeCanvas() {
   const size = Math.max(60, Math.min(targetWidth * scale, isMobile ? 140 : 180));
   player.w = player.h = size;
   player.x = (targetWidth - player.w) / 2;
-  player.y = canvasHeight - player.h - (isMobile ? 10 : 5);
+  player.y = canvasHeight - player.h; // چسبیده به پایین
 
   itemSize = Math.floor(player.w * 0.6);   // آیتم‌ها کوچیک‌تر از پلیر
   bulletSize = Math.floor(player.w * 0.25);
 }
+
 resizeCanvas();
 window.addEventListener("resize", resizeCanvas);
 
@@ -310,3 +311,4 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
   draw();
   requestAnimationFrame(gameLoop);
 })();
+

@@ -1,6 +1,3 @@
-خیلی خب 👌 این نسخه‌ی کامل اصلاح‌شده‌ی کدته که همه تغییراتی که خواستی داخلش اعمال شده:
-
-```js
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const isMobile = window.innerWidth < 600;
@@ -347,4 +344,5 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
     draw();
     requestAnimationFrame(gameLoop);
 })();
+
 

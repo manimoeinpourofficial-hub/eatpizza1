@@ -9,28 +9,25 @@ let gameOver = false, gameStarted = false;
 let pizzaProbability = 0.3;
 let itemSize = 40;
 let bulletSize = 20;
+let viewW = window.innerWidth, viewH = window.innerHeight;
 
-/* ابعاد کانواس دقیقاً برابر صفحه، با DPI درست */
+/* ابعاد کانواس دقیقاً برابر صفحه */
 function resizeCanvas() {
     const ratio = window.devicePixelRatio || 1;
-    const viewW = window.innerWidth;
-    const viewH = window.innerHeight;
+    viewW = window.innerWidth;
+    viewH = window.innerHeight;
     canvas.style.width = viewW + "px";
     canvas.style.height = viewH + "px";
     canvas.width = Math.round(viewW * ratio);
     canvas.height = Math.round(viewH * ratio);
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-    // سایز پلیر (موبایل کمی بزرگ‌تر)
     const scale = isMobile ? 0.22 : 0.25;
     const size = Math.max(60, Math.min(viewW * scale, viewH * scale));
     player.w = player.h = size;
-
-    // پلیر وسط و چسبیده به پایین
     player.x = (viewW - player.w) / 2;
     player.y = viewH - player.h;
 
-    // آیتم‌ها کوچیک‌تر از پلیر، گلوله‌ها متناسب
     itemSize = Math.floor(player.w * 0.6);
     bulletSize = Math.floor(player.w * 0.25);
 }
@@ -64,16 +61,17 @@ const sounds = {
 };
 const bgMusic = makeAudio("background.mp3");
 bgMusic.loop = true;
-bgMusic.volume = 0.3; // صدای بکگراند کمتر شد
+bgMusic.volume = 0.3;
 
-/* صف پخش صداها */
+/* صف پخش صداها با کول‌داون جدا */
 let soundQueue = [], isPlaying = false;
-let lastSoundTime = 0;
+const soundCooldown = {};
 function playSound(name) {
     if (!gameStarted) return;
     const now = Date.now();
-    if (now - lastSoundTime < 5000) return; // فقط هر ۵ ثانیه یکبار
-    lastSoundTime = now;
+    const last = soundCooldown[name] || 0;
+    if (now - last < 5000) return;
+    soundCooldown[name] = now;
 
     const s = sounds[name];
     if (!s) return;
@@ -92,7 +90,6 @@ function processQueue() {
 
 /* حرکت پلیر */
 function move(x) {
-    const viewW = window.innerWidth;
     player.x = Math.max(0, Math.min(x - player.w / 2, viewW - player.w));
 }
 canvas.addEventListener("mousemove", e => {
@@ -117,13 +114,9 @@ canvas.addEventListener("touchstart", () => {
         restartGame();
         return;
     }
-
     const now = Date.now();
-    if (now - lastTouchTime > 1000) {
-        touchCount = 0;
-    }
+    if (now - lastTouchTime > 1000) touchCount = 0;
     lastTouchTime = now;
-
     touchCount++;
     if (touchCount === 3) {
         shoot();
@@ -155,22 +148,10 @@ function shoot() {
 }
 
 /* اسپاون آیتم‌ها */
-function spawnRed() {
-    const viewW = window.innerWidth;
-    reds.push({ x: Math.random() * (viewW - itemSize), y: -itemSize, w: itemSize, h: itemSize, caught:false });
-}
-function spawnObstacle() {
-    const viewW = window.innerWidth;
-    obstacles.push({ x: Math.random() * (viewW - itemSize), y: -itemSize, w: itemSize, h: itemSize });
-}
-function spawnGreen() {
-    const viewW = window.innerWidth;
-    greens.push({ x: Math.random() * (viewW - itemSize), y: -itemSize, w: itemSize, h: itemSize });
-}
-function spawnBlue() {
-    const viewW = window.innerWidth;
-    blues.push({ x: Math.random() * (viewW - itemSize), y: -itemSize, w: itemSize+15, h: itemSize+15 });
-}
+function spawnRed() { reds.push({ x: Math.random() * (viewW - itemSize), y: -itemSize, w: itemSize, h: itemSize, caught:false }); }
+function spawnObstacle() { obstacles.push({ x: Math.random() * (viewW - itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
+function spawnGreen() { greens.push({ x: Math.random() * (viewW - itemSize), y: -itemSize, w: itemSize, h: itemSize }); }
+function spawnBlue() { blues.push({ x: Math.random() * (viewW - itemSize), y: -itemSize, w: itemSize+15, h: itemSize+15 }); }
 
 /* برخورد */
 function isColliding(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
@@ -178,79 +159,86 @@ function isColliding(a,b){ return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.
 /* آپدیت */
 function update(){
     if (gameOver || !gameStarted) return;
-    const viewH = window.innerHeight;
 
-    reds.forEach(r=>{
+    // پیتزاها
+    reds = reds.filter(r => {
         r.y += 3;
-        if (isColliding(player, r) && !r.caught) {
+        if (!r.caught && isColliding(player, r)) {
             score++;
             r.caught = true;
             playSound("pizza");
-            if (score % 2 === 0) {
-                ammo++;
-                updateAmmoDisplay();
-            }
+            if (score % 2 === 0) { ammo++; updateAmmoDisplay(); }
+            return false;
         }
-        if (r.caught) {
-            reds.splice(reds.indexOf(r), 1); // حذف مستقیم بدون فید
+        if (!r.caught && r.y > viewH) {
+            if (!gameOver) { gameOver = true; playSound("gameOver"); }
+            return false;
         }
-        if (r.y > viewH && !r.caught) {
-            gameOver = true;
-            playSound("gameOver");
-        }
+        return true;
     });
 
-    obstacles.forEach(o=>{
+    // موانع
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i];
         o.y += 3;
         if (isColliding(player, o)) {
-            gameOver = true;
-            playSound("shit");
-            playSound("gameOver");
+            if (!gameOver) { gameOver = true; playSound("shit"); playSound("gameOver"); }
+            obstacles.splice(i, 1);
+            continue;
         }
-        if (o.y > viewH) obstacles.splice(obstacles.indexOf(o), 1);
-    });
+        if (o.y > viewH) obstacles.splice(i, 1);
+    }
 
-    greens.forEach(g=>{
+    // آیتم سبز
+    greens = greens.filter(g => {
         g.y += 3;
         if (isColliding(player, g)) {
             pizzaProbability = Math.max(0.05, pizzaProbability - 0.15);
             playSound("drug");
-            greens.splice(greens.indexOf(g),1);
+            return false;
         }
-        if (g.y > viewH) greens.splice(greens.indexOf(g),1);
+        if (g.y > viewH) return false;
+        return true;
     });
 
-    blues.forEach(b=>{
+    // آیتم آبی
+    blues = blues.filter(b => {
         b.y += 3;
         if (isColliding(player, b)) {
             pizzaProbability = Math.min(0.9, pizzaProbability + 0.1);
-            blues.splice(blues.indexOf(b),1);
+            return false;
         }
-        if (b.y > viewH) blues.splice(blues.indexOf(b),1);
+        if (b.y > viewH) return false;
+        return true;
     });
 
-    bullets.forEach(b=>{
+    // گلوله‌ها
+    for (let bi = bullets.length - 1; bi >= 0; bi--) {
+        const b = bullets[bi];
         b.y -= b.speed;
-        for (let i = 0; i < obstacles.length; i++) {
-            const o = obstacles[i];
-            const bb = { x: b.x, y: b.y, w: b.w, h: b.h };
-
-            if (isColliding(bb, o)) {
+        let hit = false;
+        for (let oi = obstacles.length - 1; oi >= 0; oi--) {
+            const o = obstacles[oi];
+            if (isColliding(b, o)) {
                 explosions.push({ x: o.x, y: o.y, frame: 0 });
                 playSound("explode");
-                obstacles.splice(i, 1);
-                bullets.splice(bullets.indexOf(b), 1);
+                obstacles.splice(oi, 1);
+                bullets.splice(bi, 1);
                 score += 2;
+                hit = true;
                 break;
             }
         }
-        if (b.y + b.h < 0) bullets.splice(bullets.indexOf(b), 1);
-    });
+        if (hit) continue;
+        if (b.y + b.h < 0) bullets.splice(bi, 1);
+    }
 
-    explosions.forEach(e=>{
+    // انفجارها
+    for (let ei = explosions.length - 1; ei >= 0; ei--) {
+        const e = explosions[ei];
         e.frame++;
-        if (e.frame > 10) explosions.splice(explosions.indexOf(e), 1);
-    });
+        if (e.frame > 10) explosions.splice(ei, 1);
+    }
 }
 
 /* رسم */
@@ -276,9 +264,6 @@ function draw(){
     ctx.fillText(`Score: ${score}`, 10, 30);
     ctx.fillText(`Pizza Chance: ${(pizzaProbability*100).toFixed(0)}%`, 10, 60);
     ctx.fillText(`Ammo: ${ammo}`, 10, 90);
-
-    const viewW = window.innerWidth;
-    const viewH = window.innerHeight;
 
     // لودینگ
     if (!gameStarted) {
@@ -344,5 +329,3 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
     draw();
     requestAnimationFrame(gameLoop);
 })();
-
-

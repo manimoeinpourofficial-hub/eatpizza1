@@ -10,7 +10,7 @@ let reds = [], obstacles = [], greens = [], blues = [], bullets = [], explosions
 let score = 0, ammo = 0;
 let gameOver = false, gameStarted = false;
 let pizzaProbability = 0.3;
-let itemSize = 60;
+let itemSize = 40;
 let bulletSize = 20;
 
 /* ابعاد کانواس دقیقاً برابر صفحه، با DPI درست */
@@ -59,7 +59,7 @@ function makeAudio(src) {
     return a;
 }
 const sounds = {
-    pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3"), makeAudio("6.mp3")],
+    pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3")],
     gameOver: [makeAudio("gameover.mp3")],
     drug: makeAudio("1.mp3"),
     shit: makeAudio("4.mp3"),
@@ -347,3 +347,4 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
     draw();
     requestAnimationFrame(gameLoop);
 })();
+

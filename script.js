@@ -22,7 +22,7 @@ function resizeCanvas() {
     canvas.height = Math.round(viewH * ratio);
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-    const scale = isMobile ? 0.22 : 0.25;
+    const scale = isMobile ? 0.26 : 0.25;
     const size = Math.max(60, Math.min(viewW * scale, viewH * scale));
     player.w = player.h = size;
     player.x = (viewW - player.w) / 2;
@@ -329,3 +329,4 @@ setInterval(()=>{ if (gameStarted && Math.random() < 0.2) spawnBlue(); }, 7000);
     draw();
     requestAnimationFrame(gameLoop);
 })();
+

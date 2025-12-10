@@ -31,7 +31,7 @@ const redImg=loadImg("pizza1.png");
 const greenImg=loadImg("DRUG.png");
 const blueImg=loadImg("weed.webp");
 const bulletImg=loadImg("bullet.png");
-const bulletAltImg=loadImg("AMMO1.png");
+const bulletAltImg=loadImg("AMMO1.PNG");
 const explosionImg=loadImg("31.png");
 const speedImg=loadImg("speed.png");
 const gunImg=loadImg("gun.png");
@@ -368,4 +368,5 @@ function updateAmmoDisplay(){
   const icon=document.getElementById("ammoIcon");
   if(icon) icon.style.display=ammo>0 || gunActive ? "inline" : "none";
 }
+
 

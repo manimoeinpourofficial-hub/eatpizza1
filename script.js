@@ -3,8 +3,36 @@ let W=innerWidth,H=innerHeight,p={x:0,y:0,w:0,h:0},reds=[],obs=[],greens=[],blue
 let score=0,ammo=0,go=false,start=false,prob=0.3,item=40,bs=20,hs=+localStorage.getItem("hs")||0;
 let hunger=0,miss=0,gun=false,gunUntil=0,shooting=false,lastShot=0,pizzaCount=0,speedBoostUntil=0;
 
+// صداها
+const makeAudio=src=>{let a=new Audio(src);a.preload="auto";return a;};
+const sounds={
+  pizza:[makeAudio("2.mp3"),makeAudio("3.mp3"),makeAudio("5.mp3")],
+  drug:makeAudio("1.mp3"),
+  weed:makeAudio("weed.mp3"),
+  shit:makeAudio("4.mp3"),
+  explode:makeAudio("gooz1.mp3"),
+  gameOver:makeAudio("gameover.mp3")
+};
+const bg=makeAudio("background.mp3"); bg.loop=true; bg.volume=0.3;
+let queue=[],playing=false,cool={};
+function playSound(n){
+  if(!start) return;
+  const now=Date.now();
+  if(now-(cool[n]||0)<500) return;
+  cool[n]=now;
+  let s=sounds[n]; if(!s) return;
+  let a=(Array.isArray(s)?s[Math.random()*s.length|0]:s).cloneNode();
+  queue.push(a); process();
+}
+function process(){
+  if(playing||!queue.length) return;
+  const c=queue.shift(); playing=true;
+  c.currentTime=0; c.play().catch(()=>playing=false);
+  c.onended=()=>{playing=false;process();};
+}
+
 function R(){const r=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=W*r;c.height=H*r;x.setTransform(r,0,0,r,0,0);
-let s=Math.max(60,Math.min(W*0.25,H*0.25));p.w=p.h=s;p.x=(W-s)/2;p.y=H-s;item=s*0.6;bs=s*0.25;}
+ let s=Math.max(60,Math.min(W*0.25,H*0.25));p.w=p.h=s;p.x=(W-s)/2;p.y=H-s;item=s*0.6;bs=s*0.25;}
 R();addEventListener("resize",R);
 
 const I=s=>{let i=new Image();i.src=s;return i},img={
@@ -20,7 +48,7 @@ c.addEventListener("touchmove",e=>move(e.touches[0].clientX-c.getBoundingClientR
 
 let tc=0,lt=0;
 c.addEventListener("touchstart",()=>{
- if(!start){start=true;return;}
+ if(!start){start=true;bg.play();return;}
  if(go){reset();return;}
  const n=Date.now();if(n-lt>1000)tc=0;lt=n;tc++;
  if(gun)shooting=true;else if(tc===3){shoot();tc=0;}
@@ -29,7 +57,7 @@ c.addEventListener("touchend",()=>shooting=false,{passive:true});
 
 addEventListener("keydown",e=>{
  if(e.code==="Space"){
-   if(!start)start=true;
+   if(!start){start=true;bg.play();}
    else if(go)reset();
    else {if(gun)shooting=true;else shoot();}
  }});
@@ -58,22 +86,22 @@ function upd(){
    if(coll(p,r)){
      score+=5;if(score>hs){hs=score;localStorage.setItem("hs",hs);}
      pizzaCount++;if(pizzaCount%2===0)ammo++;
-     reds.splice(i,1);
+     reds.splice(i,1); playSound("pizza");
    }else if(r.y>H){
-     reds.splice(i,1);miss++;if(miss>=3)go=true;
+     reds.splice(i,1);miss++;if(miss>=3){go=true;playSound("gameOver");}
    }
  });
 
- obs.forEach((o,i)=>{o.y+=2.2*sp;if(coll(p,o)){go=true;}else if(o.y>H)obs.splice(i,1);});
+ obs.forEach((o,i)=>{o.y+=2.2*sp;if(coll(p,o)){go=true;playSound("shit");}else if(o.y>H)obs.splice(i,1);});
 
  greens.forEach((g,i)=>{
    g.y+=1.8*sp;
-   if(coll(p,g)){hunger=Math.max(0,hunger-15);prob=Math.max(0,prob*0.85);greens.splice(i,1);}
+   if(coll(p,g)){hunger=Math.max(0,hunger-15);prob=Math.max(0,prob*0.85);greens.splice(i,1);playSound("drug");}
  });
 
  blues.forEach((b,i)=>{
    b.y+=1.6*sp;
-   if(coll(p,b)){hunger=Math.min(100,hunger+10);prob=Math.min(1,prob*1.1);blues.splice(i,1);}
+   if(coll(p,b)){hunger=Math.min(100,hunger+10);prob=Math.min(1,prob*1.1);blues.splice(i,1);playSound("weed");}
  });
 
  buffs.forEach((bf,i)=>{
@@ -87,7 +115,7 @@ function upd(){
 
  bullets.forEach((b,i)=>{
    b.y-=b.s;if(b.y+b.h<0)bullets.splice(i,1);
-   obs.forEach((o,j)=>{if(coll(b,o)){obs.splice(j,1);score+=3;bullets.splice(i,1);}});
+   obs.forEach((o,j)=>{if(coll(b,o)){obs.splice(j,1);score+=3;bullets.splice(i,1);playSound("explode");}});
  });
 
  if(gun){if(Date.now()>gunUntil)gun=false;else if(shooting)auto();}
@@ -108,19 +136,25 @@ function draw(){
  greens.forEach(g=>x.drawImage(img.g,g.x,g.y,g.w,g.h));
  blues.forEach(b=>x.drawImage(img.b,b.x,b.y,b.w,b.h));
  obs.forEach(o=>x.drawImage(img.o,o.x,o.y,o.w,o.h));
- buffs.forEach(bf=>x.drawImage(bf.t==="s"?img.s:img.gun,bf.x,bf.y,bf.w,bf.h));
+  buffs.forEach(bf=>x.drawImage(bf.t==="s"?img.s:img.gun,bf.x,bf.y,bf.w,bf.h));
  bullets.forEach(b=>x.drawImage(b.img,b.x,b.y,b.w,b.h));
- x.fillStyle="rgba(0,0,0,0.5)";x.fillRect(0,0,W,40);
- x.fillStyle="#fff";x.textAlign="left";x.textBaseline="middle";x.font="15px Arial";
+
+ x.fillStyle="rgba(0,0,0,0.5)";
+ x.fillRect(0,0,W,40);
+ x.fillStyle="#fff";
+ x.textAlign="left";
+ x.textBaseline="middle";
+ x.font="15px Arial";
  x.fillText("Score:"+score,12,20);
  x.fillText("High:"+hs,100,20);
  x.fillText("Ammo:"+(gun?"∞":ammo),200,20);
  x.fillText("Hunger:"+hunger+"%",300,20);
  x.fillText("Missed:"+miss+"/3",420,20);
+
  if(go){
    x.fillStyle="rgba(0,0,0,0.6)";
    x.fillRect(0,0,W,H);
-     x.fillStyle="#fff";
+   x.fillStyle="#fff";
    x.textAlign="center";
    x.textBaseline="middle";
    x.font="40px Arial";
@@ -130,4 +164,5 @@ function draw(){
    x.fillText("High:"+hs,W/2,H/2+60);
  }
 }
+
 (function loop(){upd();draw();requestAnimationFrame(loop)})();

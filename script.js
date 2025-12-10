@@ -25,7 +25,7 @@ resizeCanvas(); addEventListener("resize",resizeCanvas);
 /* تصاویر (PNG شفاف) */
 const loadImg=src=>{const i=new Image(); i.src=src; return i;};
 const playerImg=loadImg("PIZZA-KHOOR.png");
-const playerAltImg=loadImg("PIZZA-KHOOR1.png");
+const playerAltImg=loadImg("pizzakhoor1.png");
 const obstacleImg=loadImg("shit.webp");
 const redImg=loadImg("pizza1.png");
 const greenImg=loadImg("DRUG.png");
@@ -368,3 +368,4 @@ function updateAmmoDisplay(){
   const icon=document.getElementById("ammoIcon");
   if(icon) icon.style.display=ammo>0 || gunActive ? "inline" : "none";
 }
+

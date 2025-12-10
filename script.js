@@ -4,7 +4,7 @@ let score=0,ammo=0,go=false,start=false,prob=0.3,item=40,bs=20,hs=+localStorage.
 let hunger=0,miss=0,gun=false,gunUntil=0,shooting=false,lastShot=0,pizzaCount=0,speedBoostUntil=0;
 
 function R(){const r=devicePixelRatio||1;W=innerWidth;H=innerHeight;c.width=W*r;c.height=H*r;x.setTransform(r,0,0,r,0,0);
- let s=Math.max(60,Math.min(W*0.25,H*0.25));p.w=p.h=s;p.x=(W-s)/2;p.y=H-s;item=s*0.6;bs=s*0.25;}
+let s=Math.max(60,Math.min(W*0.25,H*0.25));p.w=p.h=s;p.x=(W-s)/2;p.y=H-s;item=s*0.6;bs=s*0.25;}
 R();addEventListener("resize",R);
 
 const I=s=>{let i=new Image();i.src=s;return i},img={
@@ -118,9 +118,9 @@ function draw(){
  x.fillText("Hunger:"+hunger+"%",300,20);
  x.fillText("Missed:"+miss+"/3",420,20);
  if(go){
-   x.fillStyle="rgba(0,0,0,0.6)";x.fillRect(0,0,W,H);
-   x.fillStyle="#fff";x.textAlign="center";x.textBaseline="
-   x.fillStyle="#fff";
+   x.fillStyle="rgba(0,0,0,0.6)";
+   x.fillRect(0,0,W,H);
+     x.fillStyle="#fff";
    x.textAlign="center";
    x.textBaseline="middle";
    x.font="40px Arial";

@@ -111,7 +111,36 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  
+<!-- ✅ Firebase Core -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+
+<!-- ✅ Firebase Authentication -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
+
+<!-- ✅ Firebase Firestore Database -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
+<!-- ✅ Firebase Config (کد مخصوص پروژهٔ تو) -->
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyB8PV0S43tJdZYAgwSsXq5fpBrcukczgec",
+    authDomain: "eat-pizza-b1651.firebaseapp.com",
+    projectId: "eat-pizza-b1651",
+    storageBucket: "eat-pizza-b1651.appspot.com",
+    messagingSenderId: "691132791942",
+    appId: "1:691132791942:web:90070f3e73940e6916e507",
+    measurementId: "G-GKJ6YS8G4E"
+  };
+
+  // ✅ Initialize Firebase
+  const app = firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+</script>
+
+<!-- ✅ فایل اصلی بازی -->
+<script src="script.js"></script>
 
   <!-- جلوگیری از اسکرول و زوم صفحه -->
   <script>
@@ -138,3 +167,4 @@
   </script>
 </body>
 </html>
+

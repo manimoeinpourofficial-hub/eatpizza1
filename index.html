@@ -5,7 +5,7 @@
   <title>Eat Pizza - Anfo Arcade</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
-  <!-- CSS اصلی -->
+  <!-- CSS -->
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -17,10 +17,13 @@
   <!-- بوم بازی -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- نمایش گلوله (در صورت نیاز) -->
+  <!-- نمایش گلوله -->
   <div id="ammoDisplay">
     <img id="ammoIcon" src="bullet.png" style="width:40px; display:none;">
   </div>
+
+  <!-- ✅ دکمه Pause مخصوص موبایل -->
+  <button id="pauseBtn" class="pause-btn">⏸</button>
 
   <!-- ✅ Pause Menu کامل -->
   <div id="pauseMenu" class="menu hidden">
@@ -41,7 +44,7 @@
   <!-- فایل اصلی بازی -->
   <script src="script.js"></script>
 
-  <!-- جلوگیری از اسکرول، زوم، حرکت صفحه -->
+  <!-- جلوگیری از اسکرول و زوم -->
   <script>
     const blockEvent = e => { e.preventDefault(); e.stopPropagation(); };
 

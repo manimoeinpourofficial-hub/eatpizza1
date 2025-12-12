@@ -1,7 +1,7 @@
 body {
   margin: 0;
   overflow: hidden;
-  background: #fff;
+  background: #000;
 }
 
 /* بکگراند */
@@ -68,7 +68,7 @@ canvas {
   transform: scale(0.9);
 }
 
-/* Pause Menu */
+/* Pause / Profile Menu */
 .menu {
   position: fixed;
   inset: 0;
@@ -134,13 +134,7 @@ canvas {
   margin-top: 0;
 }
 
-/* انیمیشن باز شدن */
-@keyframes popIn {
-  0% { transform: scale(0.7); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-/* ✅ START MENU */
+/* START MENU */
 .start-menu {
   position: fixed;
   inset: 0;
@@ -150,6 +144,10 @@ canvas {
   justify-content: center;
   z-index: 200;
   animation: fadeIn 0.6s ease-out;
+}
+
+.start-menu.hidden {
+  display: none;
 }
 
 .start-box {
@@ -216,8 +214,111 @@ canvas {
   transform: translateY(-2px);
 }
 
+/* PROFILE DISPLAY */
+.profile-display {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: white;
+}
+
+.profile-avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  margin-bottom: 5px;
+}
+
+/* PROFILE INPUT */
+.input-box {
+  width: 200px;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.avatar-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.avatar {
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.avatar:hover {
+  transform: scale(1.1);
+}
+
+.avatar.selected {
+  border-color: #ffdd33;
+}
+
+/* LOADING SCREEN */
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, #ffdd33 0, #000 60%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.loading-box {
+  text-align: center;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+.loading-title {
+  font-size: 40px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.loading-subtitle {
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
+.loading-bar {
+  width: 250px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.4);
+  overflow: hidden;
+  margin: 0 auto 10px;
+}
+
+.loading-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #ffb800, #ffdd33);
+  transition: width 0.2s;
+}
+
+.loading-percent {
+  font-size: 18px;
+}
+
 /* انیمیشن‌ها */
 @keyframes fadeIn {
   from { opacity: 0 }
   to { opacity: 1 }
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }

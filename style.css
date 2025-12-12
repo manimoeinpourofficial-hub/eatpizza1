@@ -1,7 +1,7 @@
 body {
   margin: 0;
   overflow: hidden;
-  background: #000;
+  background: #fff; /* مثل قبل روشن */
 }
 
 /* بکگراند */
@@ -10,7 +10,7 @@ body {
   inset: 0;
   background: url("pizzaback.jpg") no-repeat center center;
   background-size: cover;
-  opacity: 0.10;
+  opacity: 0.25; /* روشن‌تر و واضح‌تر از 0.10 */
   z-index: 0;
   pointer-events: none;
 }
@@ -322,3 +322,4 @@ canvas {
   0% { transform: scale(0.7); opacity: 0; }
   100% { transform: scale(1); opacity: 1; }
 }
+

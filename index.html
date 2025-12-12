@@ -7,12 +7,34 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
   <div class="bg"></div>
+
+  <!-- Canvas بازی -->
   <canvas id="gameCanvas"></canvas>
+
+  <!-- نمایش گلوله -->
   <div id="ammoDisplay">
     <img id="ammoIcon" src="bullet.png" style="width:40px; display:none;">
   </div>
+
+  <!-- ✅ Pause Menu کامل (Anfo Style) -->
+  <div id="pauseMenu" class="menu hidden">
+    <div class="menu-box">
+      <h2>Paused</h2>
+      <button data-action="resume">Resume</button>
+      <button data-action="restart">Restart</button>
+      <button data-action="modeEasy">Easy Mode</button>
+      <button data-action="modeNormal">Normal Mode</button>
+      <button data-action="modeHard">Hard Mode</button>
+      <button data-action="quit">Quit</button>
+    </div>
+  </div>
+
+  <!-- فایل اصلی بازی -->
   <script src="script.js"></script>
+
+  <!-- جلوگیری از اسکرول و زوم -->
   <script>
     const blockEvent = e => { e.preventDefault(); e.stopPropagation(); };
     window.addEventListener('wheel', blockEvent, { passive: false });
@@ -23,5 +45,6 @@
       if (keys.includes(e.code)) blockEvent(e);
     });
   </script>
+
 </body>
 </html>

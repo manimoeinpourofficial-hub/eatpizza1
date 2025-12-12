@@ -31,6 +31,9 @@ let paused = false;
 let currentMode = "normal";
 let soundOn = true;
 
+// SlowMo (چیت دوم)
+let slowMoUntil = 0;
+
 // DOM refs
 const pauseMenu = document.getElementById("pauseMenu");
 const pauseTitle = document.getElementById("pauseTitle");
@@ -183,8 +186,13 @@ function registerInputForCheat() {
   }
 }
 
-// ✅ CHEAT 2 DESKTOP: Type "anfo"
+// ✅ CHEAT 2 DESKTOP: Type "anfo" → SlowMo
 let cheatBuffer = "";
+
+function activateSlowMo() {
+  slowMoUntil = Date.now() + 5000; // 5 ثانیه
+  spawnParticles(p.x + p.w / 2, p.y, "#88ddff", 40);
+}
 
 addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
@@ -192,14 +200,12 @@ addEventListener("keydown", e => {
   if (cheatBuffer.length > 4) cheatBuffer = cheatBuffer.slice(-4);
 
   if (cheatBuffer === "anfo") {
-    ammo += 50;
-    speedBoostUntil = Date.now() + 5000;
-    spawnParticles(p.x + p.w / 2, p.y, "yellow", 40);
+    activateSlowMo();
     cheatBuffer = "";
   }
 });
 
-// ✅ CHEAT 3 MOBILE: Swipe pattern LR → DU → RL → UD
+// ✅ CHEAT 3 MOBILE: Swipe pattern LR → DU → RL → UD → SlowMo
 let swipeState = [];
 let touchStartX = 0, touchStartY = 0;
 let touchActive = false;
@@ -209,9 +215,7 @@ function addSwipeDir(dir) {
   if (swipeState.length > 4) swipeState = swipeState.slice(-4);
   const pattern = swipeState.join("-");
   if (pattern === "LR-DU-RL-UD") {
-    ammo += 50;
-    speedBoostUntil = Date.now() + 5000;
-    spawnParticles(p.x + p.w / 2, p.y, "yellow", 40);
+    activateSlowMo();
     swipeState = [];
   }
 }
@@ -223,7 +227,12 @@ c.addEventListener("touchstart", e => {
   const y0 = t.clientY - rect.top;
 
   // کنترل شروع بازی و ریست
-  if (!start) { start = true; if (soundOn) bg.play(); if (startMenu) startMenu.style.display = "none"; return; }
+  if (!start) { 
+    start = true; 
+    if (soundOn) bg.play(); 
+    if (startMenu) startMenu.style.display = "none"; 
+    return; 
+  }
   if (go) { reset(); return; }
 
   // دابل‌تپ برای شلیک
@@ -253,7 +262,7 @@ c.addEventListener("touchend", e => {
   const dy = y1 - touchStartY;
   const absX = Math.abs(dx);
   const absY = Math.abs(dy);
-  const minDist = 50;
+  const minDist = 60;
 
   if (absX < minDist && absY < minDist) {
     touchActive = false;
@@ -510,10 +519,12 @@ function spawn(type, w, h, chanceZig = 0.3) {
 // ---------------------------
 setInterval(() => {
   if (start && !go && !paused) {
-    gameSpeed += (currentMode === "easy" ? 0.005 : currentMode === "hard" ? 0.02 : 0.01);
+    if (currentMode === "easy") gameSpeed += 0.003;
+    else if (currentMode === "normal") gameSpeed += 0.007;
+    else gameSpeed += 0.015;
     if (gameSpeed > 3) gameSpeed = 3;
   }
-}, 3000);
+}, 4000);
 
 // ---------------------------
 //  COMBO
@@ -556,46 +567,54 @@ function upd() {
   if (!start || go || paused) return;
 
   const now = Date.now();
+
   let sp = gameSpeed;
-  if (now < speedBoostUntil) sp *= 1.8;
+  let slowFactor = 1;
+  if (now < slowMoUntil) {
+    slowFactor = 0.5; // همه چیز کندتر
+  }
+
+  let effSp = sp * slowFactor;
   const dt = 16;
 
   // اسپان‌ها بر اساس زمان
   if (now > nextRed) {
     reds.push(spawn("red", item, item));
-    nextRed = now + 1500 / sp;
+    nextRed = now + 1700 / effSp;
   }
 
   if (now > nextObs) {
     if (Math.random() < 0.7) {
       obs.push(spawn("obs", item * 0.8, item * 0.8));
     }
-    nextObs = now + 3500 / sp;
+    nextObs = now + 4000 / effSp;
   }
 
   if (now > nextGreen && Math.random() < 0.2) {
     greens.push(spawn("green", item, item, 0.2));
-    nextGreen = now + 5000;
+    nextGreen = now + 6000;
   }
 
   if (now > nextBlue && Math.random() < 0.2) {
     blues.push(spawn("blue", item, item, 0.2));
-    nextBlue = now + 7000;
+    nextBlue = now + 8000;
   }
 
   if (now > nextBuff && Math.random() < 0.25) {
     buffs.push(spawn("speed", item, item, 0.25));
-    nextBuff = now + 7000;
+    nextBuff = now + 9000;
   }
 
   // Reds (pizza)
   reds.forEach((r, i) => {
-    r.y += 1.6 * sp;
-    applyZigzag(r, sp);
+    r.y += 1.3 * effSp;
+    applyZigzag(r, effSp);
 
     if (coll(p, r)) {
       handleComboPizzaTake();
-      let gained = 5 * comboMultiplier;
+      let base = 5;
+      if (now < slowMoUntil) base *= 1.2; // در SlowMo کمی بیشتر
+      let gained = base * comboMultiplier;
       score += Math.round(gained);
 
       if (score > hs) {
@@ -616,17 +635,18 @@ function upd() {
       reds.splice(i, 1);
       miss++;
       breakCombo();
-      if (miss >= (currentMode === "easy" ? 5 : 3)) {
+      if (miss >= (currentMode === "easy" ? 6 : 3)) {
         go = true;
         playSound("gameOver");
         shake = 20;
       }
     }
   });
-    // Obstacles
+
+  // Obstacles
   obs.forEach((o, i) => {
-    o.y += 1.9 * sp;
-    applyZigzag(o, sp);
+    o.y += 1.5 * effSp;
+    applyZigzag(o, effSp);
 
     if (coll(p, o)) {
       go = true;
@@ -640,8 +660,8 @@ function upd() {
 
   // Greens
   greens.forEach((g, i) => {
-    g.y += 1.4 * sp;
-    applyZigzag(g, sp);
+    g.y += 1.1 * effSp;
+    applyZigzag(g, effSp);
 
     if (coll(p, g)) {
       hunger = Math.max(0, hunger - 15);
@@ -654,8 +674,8 @@ function upd() {
 
   // Blues
   blues.forEach((b, i) => {
-    b.y += 1.3 * sp;
-    applyZigzag(b, sp);
+    b.y += 1.0 * effSp;
+    applyZigzag(b, effSp);
 
     if (coll(p, b)) {
       hunger = Math.min(100, hunger + 10);
@@ -668,8 +688,8 @@ function upd() {
 
   // Buffs (speed)
   buffs.forEach((bf, i) => {
-    bf.y += 1.6 * sp;
-    applyZigzag(bf, sp);
+    bf.y += 1.3 * effSp;
+    applyZigzag(bf, effSp);
 
     if (coll(p, bf)) {
       if (bf.tType === "speed") {
@@ -712,7 +732,7 @@ function upd() {
   if (hudHigh) hudHigh.textContent = "High: " + hs;
   if (hudAmmo) hudAmmo.textContent = "Ammo: " + ammo;
   if (hudHunger) hudHunger.textContent = "Hunger: " + hunger + "%";
-  if (hudMiss) hudMiss.textContent = "Miss: " + miss + (currentMode === "easy" ? "/5" : "/3");
+  if (hudMiss) hudMiss.textContent = "Miss: " + miss + (currentMode === "easy" ? "/6" : "/3");
   if (hudSpeed) hudSpeed.textContent = "Speed: " + gameSpeed.toFixed(1);
   if (hudMode) hudMode.textContent = "Mode: " + currentMode.toUpperCase();
 }
@@ -723,6 +743,9 @@ function upd() {
 function draw() {
   x.save();
   x.clearRect(0, 0, W, H);
+
+  const now = Date.now();
+  const inSlowMo = now < slowMoUntil;
 
   if (shake > 0) {
     x.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
@@ -735,6 +758,12 @@ function draw() {
     x.fillRect(0, 0, W, H);
     x.restore();
     return;
+  }
+
+  // افکت پس‌زمینه SlowMo
+  if (inSlowMo) {
+    x.fillStyle = "rgba(100,150,255,0.08)";
+    x.fillRect(0, 0, W, H);
   }
 
   // Player
@@ -776,6 +805,14 @@ function draw() {
     x.fillText(comboText, W / 2, 70);
   }
 
+  // SlowMo text
+  if (inSlowMo) {
+    x.textAlign = "center";
+    x.font = "18px Arial";
+    x.fillStyle = "#88ddff";
+    x.fillText("ANFO SLOW-MO", W / 2, 100);
+  }
+
   // Game Over overlay
   if (go) {
     x.fillStyle = "rgba(0,0,0,0.6)";
@@ -805,4 +842,4 @@ function draw() {
 })();
 
 applyMode("normal");
-reset();
+reset();  

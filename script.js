@@ -15,10 +15,6 @@ let prob = 0.3, item = 40, bs = 20;
 let hs = +localStorage.getItem("hs") || 0;
 let hunger = 0, miss = 0;
 
-// gun همیشه فعال است
-let gun = true;
-let shooting = false;
-let lastShot = 0;
 let pizzaCount = 0;
 let speedBoostUntil = 0;
 let gameSpeed = 1;
@@ -42,6 +38,14 @@ const pauseMain = document.getElementById("pauseMain");
 const pauseSettings = document.getElementById("pauseSettings");
 const soundStateSpan = document.getElementById("soundState");
 const pauseBtn = document.getElementById("pauseBtn");
+
+const hudScore = document.getElementById("hudScore");
+const hudHigh = document.getElementById("hudHigh");
+const hudAmmo = document.getElementById("hudAmmo");
+const hudHunger = document.getElementById("hudHunger");
+const hudMiss = document.getElementById("hudMiss");
+const hudSpeed = document.getElementById("hudSpeed");
+const hudMode = document.getElementById("hudMode");
 
 function updateSoundStateText() {
   if (!soundStateSpan) return;
@@ -131,12 +135,11 @@ const img = {
   b: I("weed.webp"),
   o: I("shit.webp"),
   bu: I("bullet.png"),
-  bi: I("AMMO1.PNG"),
   s: I("speed.png")
 };
 
 // ---------------------------
-//  INPUT
+//  INPUT + CHEAT (10 clicks in 5s → +30 ammo)
 // ---------------------------
 function move(mx) {
   p.x = Math.max(0, Math.min(mx - p.w / 2, W - p.w));
@@ -145,34 +148,49 @@ function move(mx) {
 c.addEventListener("mousemove", e => move(e.clientX - c.getBoundingClientRect().left));
 c.addEventListener("touchmove", e => move(e.touches[0].clientX - c.getBoundingClientRect().left), { passive: true });
 
-let tc = 0, lt = 0;
+// دابل‌تپ برای شلیک روی موبایل
+let lastTapTime = 0;
 
-c.addEventListener("touchstart", () => {
+// برای چیت: ذخیره زمان کلیک‌ها (کیبورد + تاچ)
+let inputTimes = [];
+
+function registerInputForCheat() {
+  const now = Date.now();
+  inputTimes.push(now);
+
+  // فقط 5 ثانیه اخیر
+  inputTimes = inputTimes.filter(t => now - t <= 5000);
+
+  if (inputTimes.length >= 10) {
+    ammo += 30;
+    spawnParticles(p.x + p.w / 2, p.y, "gold", 20);
+    inputTimes = [];
+  }
+}
+
+c.addEventListener("touchstart", e => {
   if (!start) { start = true; if (soundOn) bg.play(); return; }
   if (go) { reset(); return; }
 
-  const n = Date.now();
-  if (n - lt > 1000) tc = 0;
-  lt = n;
-  tc++;
+  const now = Date.now();
+  if (now - lastTapTime < 300) {
+    shootSingle(); // دابل‌تپ => شلیک
+  }
+  lastTapTime = now;
 
-  shooting = true;
+  registerInputForCheat();
 }, { passive: true });
-
-c.addEventListener("touchend", () => shooting = false, { passive: true });
 
 addEventListener("keydown", e => {
   if (e.code === "Space") {
     if (!start) { start = true; if (soundOn) bg.play(); }
     else if (go) reset();
-    else shooting = true;
+    else shootSingle(); // Space => تک تیر
+
+    registerInputForCheat();
   }
 
   if (e.code === "KeyP" && start && !go) togglePause();
-});
-
-addEventListener("keyup", e => {
-  if (e.code === "Space") shooting = false;
 });
 
 // دکمه Pause موبایل
@@ -197,24 +215,6 @@ function shootSingle() {
       s: 12,
       img: img.bu
     });
-  }
-}
-
-function auto() {
-  const n = Date.now();
-  if (n - lastShot > 90) {
-    if (ammo > 0) {
-      ammo--;
-      bullets.push({
-        x: p.x + p.w / 2 - bs / 2,
-        y: p.y - 6,
-        w: bs,
-        h: bs * 2,
-        s: 14,
-        img: img.bi
-      });
-    }
-    lastShot = n;
   }
 }
 
@@ -296,6 +296,14 @@ function reset() {
   shake = 0;
 
   applyMode(currentMode);
+
+  // اسپان تایمرها ریست
+  const now = Date.now();
+  nextRed = now;
+  nextObs = now;
+  nextGreen = now + 2000;
+  nextBlue = now + 3000;
+  nextBuff = now + 4000;
 }
 
 // ---------------------------
@@ -317,7 +325,6 @@ function togglePause() {
     paused = true;
     showPauseMenu();
     bg.pause();
-    // برگشت به تب اصلی
     if (pauseMain && pauseSettings && pauseTitle) {
       pauseMain.style.display = "block";
       pauseSettings.style.display = "none";
@@ -378,7 +385,7 @@ if (pauseMenu) {
 }
 
 // ---------------------------
-//  SPAWN WITH ZIGZAG
+//  SPAWN SYSTEM (بدون setInterval)
 // ---------------------------
 function spawn(type, w, h, chanceZig = 0.3) {
   const zig = Math.random() < chanceZig;
@@ -396,12 +403,11 @@ function spawn(type, w, h, chanceZig = 0.3) {
   };
 }
 
-setInterval(() => start && !go && Math.random() < prob && reds.push(spawn("red", item, item)), 1500);
-setInterval(() => start && !go && obs.push(spawn("obs", item * 0.8, item * 0.8)), 3000);
-setInterval(() => start && !go && Math.random() < 0.2 && greens.push(spawn("green", item, item, 0.2)), 5000);
-setInterval(() => start && !go && Math.random() < 0.2 && blues.push(spawn("blue", item, item, 0.2)), 7000);
-// فقط speed buff
-setInterval(() => start && !go && Math.random() < 0.15 && buffs.push(spawn("speed", item, item, 0.25)), 8000);
+let nextRed = 0;
+let nextObs = 0;
+let nextGreen = 0;
+let nextBlue = 0;
+let nextBuff = 0;
 
 // ---------------------------
 //  HARDER OVER TIME
@@ -447,7 +453,7 @@ function applyZigzag(o, sp) {
 }
 
 // ---------------------------
-//  UPDATE
+//  UPDATE (قسمت اول)
 // ---------------------------
 function upd() {
   if (!start || go || paused) return;
@@ -456,6 +462,32 @@ function upd() {
   let sp = gameSpeed;
   if (now < speedBoostUntil) sp *= 1.8;
   const dt = 16;
+
+  // اسپان‌ها بر اساس زمان (نه setInterval)
+  if (now > nextRed) {
+    reds.push(spawn("red", item, item));
+    nextRed = now + 1500 / sp;
+  }
+
+  if (now > nextObs) {
+    obs.push(spawn("obs", item * 0.8, item * 0.8));
+    nextObs = now + 3000 / sp;
+  }
+
+  if (now > nextGreen && Math.random() < 0.2) {
+    greens.push(spawn("green", item, item, 0.2));
+    nextGreen = now + 5000;
+  }
+
+  if (now > nextBlue && Math.random() < 0.2) {
+    blues.push(spawn("blue", item, item, 0.2));
+    nextBlue = now + 7000;
+  }
+
+  if (now > nextBuff && Math.random() < 0.15) {
+    buffs.push(spawn("speed", item, item, 0.25));
+    nextBuff = now + 8000;
+  }
 
   // Reds (pizza)
   reds.forEach((r, i) => {
@@ -492,8 +524,7 @@ function upd() {
       }
     }
   });
-
-  // Obstacles
+    // Obstacles
   obs.forEach((o, i) => {
     o.y += 2.2 * sp;
     applyZigzag(o, sp);
@@ -543,8 +574,8 @@ function upd() {
 
     if (coll(p, bf)) {
       if (bf.tType === "speed") {
-        speedBoostUntil = now + 10000;
-        if (miss > 0) miss--;
+        speedBoostUntil = now + 10000;   // 10 ثانیه سرعت بیشتر
+        if (miss > 0) miss--;            // یکی از missها کم می‌شود
         spawnParticles(bf.x + bf.w / 2, bf.y + bf.h / 2, "yellow", 10);
       }
       buffs.splice(i, 1);
@@ -573,12 +604,18 @@ function upd() {
     });
   });
 
-  // Gun auto fire
-  if (gun && shooting) auto();
-
   updParticles(dt);
 
   if (combo > 0 && now - lastPizzaTime > 2500) breakCombo();
+
+  // HUD update
+  if (hudScore) hudScore.textContent = "Score: " + score;
+  if (hudHigh) hudHigh.textContent = "High: " + hs;
+  if (hudAmmo) hudAmmo.textContent = "Ammo: " + ammo;
+  if (hudHunger) hudHunger.textContent = "Hunger: " + hunger + "%";
+  if (hudMiss) hudMiss.textContent = "Miss: " + miss + "/3";
+  if (hudSpeed) hudSpeed.textContent = "Speed: " + gameSpeed.toFixed(1);
+  if (hudMode) hudMode.textContent = "Mode: " + currentMode.toUpperCase();
 }
 
 // ---------------------------
@@ -619,18 +656,21 @@ function draw() {
   x.drawImage(img.p, -p.w / 2, -p.h / 2, p.w, p.h);
   x.restore();
 
+  // Objects
   reds.forEach(r => x.drawImage(img.r, r.x, r.y, r.w, r.h));
   greens.forEach(g => x.drawImage(img.g, g.x, g.y, g.w, g.h));
   blues.forEach(b => x.drawImage(img.b, b.x, b.y, b.w, b.h));
   obs.forEach(o => x.drawImage(img.o, o.x, o.y, o.w, o.h));
   buffs.forEach(bf => x.drawImage(img.s, bf.x, bf.y, bf.w, bf.h));
 
+  // Bullets
   bullets.forEach(b => {
     x.drawImage(b.img, b.x, b.y, b.w, b.h);
     x.fillStyle = "rgba(255,255,0,0.4)";
     x.fillRect(b.x + b.w / 4, b.y + b.h, b.w / 2, 15);
   });
 
+  // Particles
   particles.forEach(p0 => {
     x.fillStyle = p0.color;
     x.globalAlpha = Math.max(0, p0.life / 400);
@@ -640,23 +680,7 @@ function draw() {
     x.globalAlpha = 1;
   });
 
-  // HUD
-  x.fillStyle = "rgba(0,0,0,0.5)";
-  x.fillRect(0, 0, W, 40);
-
-  x.fillStyle = "#fff";
-  x.textAlign = "left";
-  x.textBaseline = "middle";
-  x.font = "15px Arial";
-
-  x.fillText("Score: " + score, 12, 20);
-  x.fillText("High: " + hs, 100, 20);
-  x.fillText("Ammo: " + ammo, 200, 20);
-  x.fillText("Hunger: " + hunger + "%", 300, 20);
-  x.fillText("Missed: " + miss + "/3", 420, 20);
-  x.fillText("Speed: " + gameSpeed.toFixed(1), 520, 20);
-  x.fillText("Mode: " + currentMode.toUpperCase(), 620, 20);
-
+  // Combo text
   if (comboText && Date.now() < comboTextUntil) {
     x.textAlign = "center";
     x.font = "24px Arial";
@@ -664,6 +688,7 @@ function draw() {
     x.fillText(comboText, W / 2, 70);
   }
 
+  // Game Over overlay
   if (go) {
     x.fillStyle = "rgba(0,0,0,0.6)";
     x.fillRect(0, 0, W, H);

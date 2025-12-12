@@ -4,12 +4,28 @@
   <meta charset="UTF-8">
   <title>Eat Pizza - Anfo Arcade</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+  <!-- ✅ LOADING SCREEN -->
+  <div id="loadingScreen" class="loading-screen">
+    <div class="loading-box">
+      <div class="loading-title">EAT PIZZA</div>
+      <div class="loading-subtitle">Loading...</div>
+      <div class="loading-bar">
+        <div class="loading-fill" id="loadingFill"></div>
+      </div>
+      <div class="loading-percent" id="loadingPercent">0%</div>
+    </div>
+  </div>
+
   <!-- ✅ START MENU -->
-  <div id="startMenu" class="start-menu">
+  <div id="startMenu" class="start-menu hidden">
     <div class="start-box">
       <h1 class="title" id="startLogo">EAT PIZZA</h1>
       <h2 class="subtitle">ANFO ARCADE</h2>
@@ -22,6 +38,31 @@
         <button class="menu-btn" data-action="leaderboard">Leaderboard</button>
         <button class="menu-btn" data-action="settings">Settings</button>
       </div>
+
+      <div id="profileDisplay" class="profile-display hidden">
+        <img id="profileAvatar" class="profile-avatar">
+        <span id="profileName"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ LOGIN / PROFILE MENU -->
+  <div id="profileMenu" class="menu hidden">
+    <div class="menu-box">
+      <h2>Profile</h2>
+
+      <input id="usernameInput" type="text" placeholder="Enter your name" class="input-box">
+
+      <p style="margin:10px 0 5px;">Choose Avatar</p>
+      <div class="avatar-row">
+        <img src="avatar1.png" class="avatar" data-id="avatar1">
+        <img src="avatar2.png" class="avatar" data-id="avatar2">
+        <img src="avatar3.png" class="avatar" data-id="avatar3">
+        <img src="avatar4.png" class="avatar" data-id="avatar4">
+      </div>
+
+      <button id="saveProfileBtn">Save</button>
+      <button id="closeProfileBtn">Back</button>
     </div>
   </div>
 
@@ -87,6 +128,13 @@
       ];
       if (keys.includes(e.code)) blockEvent(e);
     });
+
+    // ثبت سرویس‌ورکر برای PWA
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').catch(() => {});
+      });
+    }
   </script>
 </body>
 </html>

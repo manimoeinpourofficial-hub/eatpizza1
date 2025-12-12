@@ -25,11 +25,12 @@
   <!-- ✅ دکمه Pause مخصوص موبایل -->
   <button id="pauseBtn" class="pause-btn">⏸</button>
 
-  <!-- ✅ Pause Menu کامل -->
-  <div id="pauseMenu" class="menu hidden">
-    <div class="menu-box">
-      <h2>Paused</h2>
+<!-- ✅ Pause + Settings Menu -->
+<div id="pauseMenu" class="menu hidden">
+  <div class="menu-box">
+    <h2 id="pauseTitle">Paused</h2>
 
+    <div id="pauseMain">
       <button data-action="resume">Resume</button>
       <button data-action="restart">Restart</button>
 
@@ -37,9 +38,18 @@
       <button data-action="modeNormal">Normal Mode</button>
       <button data-action="modeHard">Hard Mode</button>
 
+      <button data-action="settings">Settings</button>
       <button data-action="quit">Quit</button>
     </div>
+
+    <div id="pauseSettings" style="display:none;">
+      <p style="margin-bottom:10px;">Settings</p>
+
+      <button data-action="toggleSound">Sound: <span id="soundState">On</span></button>
+      <button data-action="backFromSettings">Back</button>
+    </div>
   </div>
+</div>
 
   <!-- فایل اصلی بازی -->
   <script src="script.js"></script>
@@ -63,3 +73,4 @@
 
 </body>
 </html>
+

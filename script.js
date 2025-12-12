@@ -90,7 +90,7 @@ const makeAudio = src => {
 const sounds = {
   pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3")],
   drug: makeAudio("1.mp3"),
-  weed: makeAudio("weed.mp3"),
+  //weed: makeAudio("weed.mp3"),//
   shit: makeAudio("4.mp3"),
   explode: makeAudio("gooz1.mp3"),
   gameOver: makeAudio("gameover.mp3")
@@ -814,7 +814,7 @@ function upd() {
       prob = Math.min(1, prob * 1.1);
       blues.splice(i, 1);
       spawnParticles(b.x + b.w / 2, b.y + b.h / 2, "#00ccff", 8);
-      playSound("weed");
+      //playSound("weed");
     }
   });
 

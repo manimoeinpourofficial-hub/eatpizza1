@@ -55,6 +55,23 @@ const startMenu = document.getElementById("startMenu");
 const startGameBtn = document.getElementById("startGameBtn");
 const startLogo = document.getElementById("startLogo");
 
+// LOADING refs
+const loadingScreen = document.getElementById("loadingScreen");
+const loadingFill = document.getElementById("loadingFill");
+const loadingPercent = document.getElementById("loadingPercent");
+
+// PROFILE refs
+const profileMenu = document.getElementById("profileMenu");
+const usernameInput = document.getElementById("usernameInput");
+const saveProfileBtn = document.getElementById("saveProfileBtn");
+const closeProfileBtn = document.getElementById("closeProfileBtn");
+const profileDisplay = document.getElementById("profileDisplay");
+const profileAvatarImg = document.getElementById("profileAvatar");
+const profileNameSpan = document.getElementById("profileName");
+
+let selectedAvatar = null;
+let profile = JSON.parse(localStorage.getItem("profile") || "null");
+
 function updateSoundStateText() {
   if (!soundStateSpan) return;
   soundStateSpan.textContent = soundOn ? "On" : "Off";
@@ -62,7 +79,7 @@ function updateSoundStateText() {
 updateSoundStateText();
 
 // ---------------------------
-//  AUDIO
+//  AUDIO (preload list)
 // ---------------------------
 const makeAudio = src => {
   let a = new Audio(src);
@@ -147,14 +164,133 @@ const img = {
 };
 
 // ---------------------------
+//  LOADING LOGIC
+// ---------------------------
+const assetsToLoad = [
+  img.p, img.r, img.g, img.b, img.o, img.bu, img.s,
+  ...Object.values(sounds).flat().filter(a => a instanceof Audio),
+  bg
+];
+
+let loadedCount = 0;
+
+function updateLoadingProgress() {
+  loadedCount++;
+  const total = assetsToLoad.length;
+  const percent = Math.round((loadedCount / total) * 100);
+  loadingFill.style.width = percent + "%";
+  loadingPercent.textContent = percent + "%";
+
+  if (loadedCount >= total) {
+    setTimeout(() => {
+      loadingScreen.style.display = "none";
+      startMenu.classList.remove("hidden");
+      updateProfileDisplay();
+    }, 300);
+  }
+}
+
+// hook images
+assetsToLoad.forEach(asset => {
+  if (asset instanceof Image) {
+    asset.addEventListener("load", updateLoadingProgress);
+    asset.addEventListener("error", updateLoadingProgress);
+  } else if (asset instanceof Audio) {
+    asset.addEventListener("canplaythrough", updateLoadingProgress, { once: true });
+    asset.addEventListener("error", updateLoadingProgress, { once: true });
+  }
+});
+
+// fallback اگر چیزی خیلی طول بکشه
+setTimeout(() => {
+  if (loadingScreen.style.display !== "none") {
+    loadingFill.style.width = "100%";
+    loadingPercent.textContent = "100%";
+    loadingScreen.style.display = "none";
+    startMenu.classList.remove("hidden");
+    updateProfileDisplay();
+  }
+}, 8000);
+
+// ---------------------------
 //  START MENU LOGIC
 // ---------------------------
 if (startGameBtn) {
   startGameBtn.addEventListener("click", () => {
-    if (startMenu) startMenu.style.display = "none";
+    if (startMenu) startMenu.classList.add("hidden");
     start = true;
     if (soundOn) bg.play();
   });
+}
+
+document.querySelectorAll(".menu-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const act = btn.dataset.action;
+
+    if (act === "login") {
+      openProfileMenu();
+    } else if (act === "modes") {
+      // بعداً می‌تونیم منوی Mode جدا بسازیم
+    } else if (act === "leaderboard") {
+      // اینجا بعداً Leaderboard آنلاین وصل می‌شه
+    } else if (act === "settings") {
+      // می‌تونیم یک Settings جدا هم اضافه کنیم
+    }
+  });
+});
+
+// ---------------------------
+//  PROFILE SYSTEM
+// ---------------------------
+function highlightAvatar() {
+  document.querySelectorAll(".avatar").forEach(a => {
+    a.classList.remove("selected");
+    if (a.dataset.id === selectedAvatar) a.classList.add("selected");
+  });
+}
+
+function openProfileMenu() {
+  profileMenu.classList.remove("hidden");
+
+  if (profile) {
+    usernameInput.value = profile.username;
+    selectedAvatar = profile.avatar;
+    highlightAvatar();
+  }
+}
+
+function closeProfileMenu() {
+  profileMenu.classList.add("hidden");
+}
+
+document.querySelectorAll(".avatar").forEach(a => {
+  a.addEventListener("click", () => {
+    selectedAvatar = a.dataset.id;
+    highlightAvatar();
+  });
+});
+
+saveProfileBtn.addEventListener("click", () => {
+  const username = usernameInput.value.trim();
+  if (!username || !selectedAvatar) return;
+
+  profile = { username, avatar: selectedAvatar };
+  localStorage.setItem("profile", JSON.stringify(profile));
+
+  updateProfileDisplay();
+  closeProfileMenu();
+});
+
+closeProfileBtn.addEventListener("click", closeProfileMenu);
+
+function updateProfileDisplay() {
+  if (!profile || !profileDisplay) {
+    if (profileDisplay) profileDisplay.classList.add("hidden");
+    return;
+  }
+  profileAvatarImg.src = profile.avatar + ".png";
+  profileNameSpan.textContent = profile.username;
+  profileDisplay.classList.remove("hidden");
 }
 
 // ---------------------------
@@ -226,26 +362,22 @@ c.addEventListener("touchstart", e => {
   const x0 = t.clientX - rect.left;
   const y0 = t.clientY - rect.top;
 
-  // کنترل شروع بازی و ریست
-  if (!start) { 
-    start = true; 
-    if (soundOn) bg.play(); 
-    if (startMenu) startMenu.style.display = "none"; 
-    return; 
+  if (!start) {
+    start = true;
+    if (soundOn) bg.play();
+    if (startMenu) startMenu.classList.add("hidden");
+    return;
   }
   if (go) { reset(); return; }
 
-  // دابل‌تپ برای شلیک
   const now = Date.now();
   if (now - lastTapTime < 300) {
     shootSingle();
   }
   lastTapTime = now;
 
-  // برای چیت 1
   registerInputForCheat();
 
-  // برای سوایپ
   touchActive = true;
   touchStartX = x0;
   touchStartY = y0;
@@ -285,7 +417,7 @@ addEventListener("keydown", e => {
     if (!start) {
       start = true;
       if (soundOn) bg.play();
-      if (startMenu) startMenu.style.display = "none";
+      if (startMenu) startMenu.classList.add("hidden");
     } else if (go) {
       reset();
     } else {
@@ -473,7 +605,7 @@ if (pauseMenu) {
       paused = false;
       hidePauseMenu();
       bg.pause();
-      if (startMenu) startMenu.style.display = "flex";
+      if (startMenu) startMenu.classList.remove("hidden");
     } else if (act === "settings") {
       if (pauseMain && pauseSettings && pauseTitle) {
         pauseMain.style.display = "none";
@@ -571,7 +703,7 @@ function upd() {
   let sp = gameSpeed;
   let slowFactor = 1;
   if (now < slowMoUntil) {
-    slowFactor = 0.5; // همه چیز کندتر
+    slowFactor = 0.5;
   }
 
   let effSp = sp * slowFactor;
@@ -613,7 +745,7 @@ function upd() {
     if (coll(p, r)) {
       handleComboPizzaTake();
       let base = 5;
-      if (now < slowMoUntil) base *= 1.2; // در SlowMo کمی بیشتر
+      if (now < slowMoUntil) base *= 1.2;
       let gained = base * comboMultiplier;
       score += Math.round(gained);
 
@@ -760,7 +892,6 @@ function draw() {
     return;
   }
 
-  // افکت پس‌زمینه SlowMo
   if (inSlowMo) {
     x.fillStyle = "rgba(100,150,255,0.08)";
     x.fillRect(0, 0, W, H);
@@ -842,4 +973,4 @@ function draw() {
 })();
 
 applyMode("normal");
-reset();  
+reset();

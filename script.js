@@ -47,6 +47,11 @@ const hudMiss = document.getElementById("hudMiss");
 const hudSpeed = document.getElementById("hudSpeed");
 const hudMode = document.getElementById("hudMode");
 
+// START MENU refs
+const startMenu = document.getElementById("startMenu");
+const startGameBtn = document.getElementById("startGameBtn");
+const startLogo = document.getElementById("startLogo");
+
 function updateSoundStateText() {
   if (!soundStateSpan) return;
   soundStateSpan.textContent = soundOn ? "On" : "Off";
@@ -139,7 +144,18 @@ const img = {
 };
 
 // ---------------------------
-//  INPUT + CHEAT (10 clicks in 5s → +30 ammo)
+//  START MENU LOGIC
+// ---------------------------
+if (startGameBtn) {
+  startGameBtn.addEventListener("click", () => {
+    if (startMenu) startMenu.style.display = "none";
+    start = true;
+    if (soundOn) bg.play();
+  });
+}
+
+// ---------------------------
+//  INPUT + CHEATS
 // ---------------------------
 function move(mx) {
   p.x = Math.max(0, Math.min(mx - p.w / 2, W - p.w));
@@ -151,41 +167,121 @@ c.addEventListener("touchmove", e => move(e.touches[0].clientX - c.getBoundingCl
 // دابل‌تپ برای شلیک روی موبایل
 let lastTapTime = 0;
 
-// برای چیت: ذخیره زمان کلیک‌ها (کیبورد + تاچ)
+// برای چیت 1: ذخیره زمان کلیک‌ها (کیبورد + تاچ)
 let inputTimes = [];
 
+// ✅ CHEAT 1: 20 inputs in 5 seconds → +30 ammo
 function registerInputForCheat() {
   const now = Date.now();
   inputTimes.push(now);
-
-  // فقط 5 ثانیه اخیر
   inputTimes = inputTimes.filter(t => now - t <= 5000);
 
-  if (inputTimes.length >= 10) {
+  if (inputTimes.length >= 20) {
     ammo += 30;
-    spawnParticles(p.x + p.w / 2, p.y, "gold", 20);
+    spawnParticles(p.x + p.w / 2, p.y, "gold", 25);
     inputTimes = [];
   }
 }
 
+// ✅ CHEAT 2 DESKTOP: Type "anfo"
+let cheatBuffer = "";
+
+addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  cheatBuffer += k;
+  if (cheatBuffer.length > 4) cheatBuffer = cheatBuffer.slice(-4);
+
+  if (cheatBuffer === "anfo") {
+    ammo += 50;
+    speedBoostUntil = Date.now() + 5000;
+    spawnParticles(p.x + p.w / 2, p.y, "yellow", 40);
+    cheatBuffer = "";
+  }
+});
+
+// ✅ CHEAT 3 MOBILE: Swipe pattern LR → DU → RL → UD
+let swipeState = [];
+let touchStartX = 0, touchStartY = 0;
+let touchActive = false;
+
+function addSwipeDir(dir) {
+  swipeState.push(dir);
+  if (swipeState.length > 4) swipeState = swipeState.slice(-4);
+  const pattern = swipeState.join("-");
+  if (pattern === "LR-DU-RL-UD") {
+    ammo += 50;
+    speedBoostUntil = Date.now() + 5000;
+    spawnParticles(p.x + p.w / 2, p.y, "yellow", 40);
+    swipeState = [];
+  }
+}
+
 c.addEventListener("touchstart", e => {
-  if (!start) { start = true; if (soundOn) bg.play(); return; }
+  const t = e.touches[0];
+  const rect = c.getBoundingClientRect();
+  const x0 = t.clientX - rect.left;
+  const y0 = t.clientY - rect.top;
+
+  // کنترل شروع بازی و ریست
+  if (!start) { start = true; if (soundOn) bg.play(); if (startMenu) startMenu.style.display = "none"; return; }
   if (go) { reset(); return; }
 
+  // دابل‌تپ برای شلیک
   const now = Date.now();
   if (now - lastTapTime < 300) {
-    shootSingle(); // دابل‌تپ => شلیک
+    shootSingle();
   }
   lastTapTime = now;
 
+  // برای چیت 1
   registerInputForCheat();
+
+  // برای سوایپ
+  touchActive = true;
+  touchStartX = x0;
+  touchStartY = y0;
 }, { passive: true });
+
+c.addEventListener("touchend", e => {
+  if (!touchActive) return;
+  const rect = c.getBoundingClientRect();
+  const changed = e.changedTouches[0];
+  const x1 = changed.clientX - rect.left;
+  const y1 = changed.clientY - rect.top;
+
+  const dx = x1 - touchStartX;
+  const dy = y1 - touchStartY;
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+  const minDist = 50;
+
+  if (absX < minDist && absY < minDist) {
+    touchActive = false;
+    return;
+  }
+
+  if (absX > absY) {
+    if (dx > 0) addSwipeDir("LR");
+    else addSwipeDir("RL");
+  } else {
+    if (dy < 0) addSwipeDir("DU");
+    else addSwipeDir("UD");
+  }
+
+  touchActive = false;
+});
 
 addEventListener("keydown", e => {
   if (e.code === "Space") {
-    if (!start) { start = true; if (soundOn) bg.play(); }
-    else if (go) reset();
-    else shootSingle(); // Space => تک تیر
+    if (!start) {
+      start = true;
+      if (soundOn) bg.play();
+      if (startMenu) startMenu.style.display = "none";
+    } else if (go) {
+      reset();
+    } else {
+      shootSingle();
+    }
 
     registerInputForCheat();
   }
@@ -252,26 +348,32 @@ function updParticles(dt) {
 }
 
 // ---------------------------
-//  MODE
+//  MODE (نرم‌تر شده)
 // ---------------------------
 function applyMode(mode) {
   currentMode = mode;
 
   if (mode === "easy") {
-    gameSpeed = 0.7;
-    prob = 0.25;
+    gameSpeed = 0.6;
+    prob = 0.18;
   } else if (mode === "normal") {
-    gameSpeed = 1;
-    prob = 0.3;
+    gameSpeed = 0.9;
+    prob = 0.25;
   } else if (mode === "hard") {
-    gameSpeed = 1.4;
-    prob = 0.4;
+    gameSpeed = 1.2;
+    prob = 0.3;
   }
 }
 
 // ---------------------------
 //  RESET
 // ---------------------------
+let nextRed = 0;
+let nextObs = 0;
+let nextGreen = 0;
+let nextBlue = 0;
+let nextBuff = 0;
+
 function reset() {
   reds = [];
   obs = [];
@@ -297,7 +399,6 @@ function reset() {
 
   applyMode(currentMode);
 
-  // اسپان تایمرها ریست
   const now = Date.now();
   nextRed = now;
   nextObs = now;
@@ -363,6 +464,7 @@ if (pauseMenu) {
       paused = false;
       hidePauseMenu();
       bg.pause();
+      if (startMenu) startMenu.style.display = "flex";
     } else if (act === "settings") {
       if (pauseMain && pauseSettings && pauseTitle) {
         pauseMain.style.display = "none";
@@ -385,7 +487,7 @@ if (pauseMenu) {
 }
 
 // ---------------------------
-//  SPAWN SYSTEM (بدون setInterval)
+//  SPAWN SYSTEM
 // ---------------------------
 function spawn(type, w, h, chanceZig = 0.3) {
   const zig = Math.random() < chanceZig;
@@ -403,20 +505,15 @@ function spawn(type, w, h, chanceZig = 0.3) {
   };
 }
 
-let nextRed = 0;
-let nextObs = 0;
-let nextGreen = 0;
-let nextBlue = 0;
-let nextBuff = 0;
-
 // ---------------------------
-//  HARDER OVER TIME
+//  HARDER OVER TIME (نرم‌تر)
 // ---------------------------
 setInterval(() => {
   if (start && !go && !paused) {
-    gameSpeed += (currentMode === "easy" ? 0.01 : currentMode === "hard" ? 0.03 : 0.02);
+    gameSpeed += (currentMode === "easy" ? 0.005 : currentMode === "hard" ? 0.02 : 0.01);
+    if (gameSpeed > 3) gameSpeed = 3;
   }
-}, 2000);
+}, 3000);
 
 // ---------------------------
 //  COMBO
@@ -463,15 +560,17 @@ function upd() {
   if (now < speedBoostUntil) sp *= 1.8;
   const dt = 16;
 
-  // اسپان‌ها بر اساس زمان (نه setInterval)
+  // اسپان‌ها بر اساس زمان
   if (now > nextRed) {
     reds.push(spawn("red", item, item));
     nextRed = now + 1500 / sp;
   }
 
   if (now > nextObs) {
-    obs.push(spawn("obs", item * 0.8, item * 0.8));
-    nextObs = now + 3000 / sp;
+    if (Math.random() < 0.7) {
+      obs.push(spawn("obs", item * 0.8, item * 0.8));
+    }
+    nextObs = now + 3500 / sp;
   }
 
   if (now > nextGreen && Math.random() < 0.2) {
@@ -484,14 +583,14 @@ function upd() {
     nextBlue = now + 7000;
   }
 
-  if (now > nextBuff && Math.random() < 0.15) {
+  if (now > nextBuff && Math.random() < 0.25) {
     buffs.push(spawn("speed", item, item, 0.25));
-    nextBuff = now + 8000;
+    nextBuff = now + 7000;
   }
 
   // Reds (pizza)
   reds.forEach((r, i) => {
-    r.y += 2 * sp;
+    r.y += 1.6 * sp;
     applyZigzag(r, sp);
 
     if (coll(p, r)) {
@@ -517,7 +616,7 @@ function upd() {
       reds.splice(i, 1);
       miss++;
       breakCombo();
-      if (miss >= 3) {
+      if (miss >= (currentMode === "easy" ? 5 : 3)) {
         go = true;
         playSound("gameOver");
         shake = 20;
@@ -526,7 +625,7 @@ function upd() {
   });
     // Obstacles
   obs.forEach((o, i) => {
-    o.y += 2.2 * sp;
+    o.y += 1.9 * sp;
     applyZigzag(o, sp);
 
     if (coll(p, o)) {
@@ -541,7 +640,7 @@ function upd() {
 
   // Greens
   greens.forEach((g, i) => {
-    g.y += 1.8 * sp;
+    g.y += 1.4 * sp;
     applyZigzag(g, sp);
 
     if (coll(p, g)) {
@@ -555,7 +654,7 @@ function upd() {
 
   // Blues
   blues.forEach((b, i) => {
-    b.y += 1.6 * sp;
+    b.y += 1.3 * sp;
     applyZigzag(b, sp);
 
     if (coll(p, b)) {
@@ -569,13 +668,13 @@ function upd() {
 
   // Buffs (speed)
   buffs.forEach((bf, i) => {
-    bf.y += 2 * sp;
+    bf.y += 1.6 * sp;
     applyZigzag(bf, sp);
 
     if (coll(p, bf)) {
       if (bf.tType === "speed") {
-        speedBoostUntil = now + 10000;   // 10 ثانیه سرعت بیشتر
-        if (miss > 0) miss--;            // یکی از missها کم می‌شود
+        speedBoostUntil = now + 10000;
+        if (miss > 0) miss--;
         spawnParticles(bf.x + bf.w / 2, bf.y + bf.h / 2, "yellow", 10);
       }
       buffs.splice(i, 1);
@@ -613,7 +712,7 @@ function upd() {
   if (hudHigh) hudHigh.textContent = "High: " + hs;
   if (hudAmmo) hudAmmo.textContent = "Ammo: " + ammo;
   if (hudHunger) hudHunger.textContent = "Hunger: " + hunger + "%";
-  if (hudMiss) hudMiss.textContent = "Miss: " + miss + "/3";
+  if (hudMiss) hudMiss.textContent = "Miss: " + miss + (currentMode === "easy" ? "/5" : "/3");
   if (hudSpeed) hudSpeed.textContent = "Speed: " + gameSpeed.toFixed(1);
   if (hudMode) hudMode.textContent = "Mode: " + currentMode.toUpperCase();
 }
@@ -632,19 +731,8 @@ function draw() {
   }
 
   if (!start) {
-    x.fillStyle = "#222";
+    x.fillStyle = "transparent";
     x.fillRect(0, 0, W, H);
-
-    x.fillStyle = "#fff";
-    x.textAlign = "center";
-    x.textBaseline = "middle";
-    x.font = "26px Arial";
-
-    x.fillText("Eat Pizza - Anfo Arcade", W / 2, H / 2 - 50);
-    x.fillText("Tap / Space to Start", W / 2, H / 2 - 10);
-    x.fillText("Miss 3 pizzas = Game Over", W / 2, H / 2 + 20);
-    x.fillText("High: " + hs, W / 2, H / 2 + 50);
-
     x.restore();
     return;
   }

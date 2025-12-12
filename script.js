@@ -974,3 +974,12 @@ function draw() {
 
 applyMode("normal");
 reset();
+
+
+auth.signInAnonymously()
+  .then(() => {
+    console.log("✅ Firebase Connected:", auth.currentUser.uid);
+  })
+  .catch(err => {
+    console.error("❌ Firebase Error:", err);
+  });

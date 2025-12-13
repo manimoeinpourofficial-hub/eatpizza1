@@ -22,6 +22,7 @@
     <div id="hudTop">
       <div class="hud-left">
         <span id="hudScore">Score: 0</span>
+        <span id="hudHunger">Hunger: 50%</span>
         <span id="hudHigh">High: 0</span>
         <span id="hudPC">PC: 0</span>
       </div>
@@ -156,6 +157,34 @@
         <h2>🏆 Leaderboard</h2>
         <div class="leaderboard-list"></div>
         <button class="menu-btn" onclick="closeLeaderboard()">Close</button>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="settingsMenu" class="modal hidden">
+      <div class="modal-content">
+        <h2>⚙ Settings</h2>
+
+        <div class="setting-block">
+          <div class="setting-label">Control Type</div>
+          <div class="setting-options">
+            <button class="setting-chip" data-control="touch">Touch</button>
+            <button class="setting-chip" data-control="tilt">Tilt</button>
+            <button class="setting-chip" data-control="both">Touch + Tilt</button>
+          </div>
+          <p class="setting-help">
+            Tilt: Move phone left/right to control player.
+          </p>
+        </div>
+
+        <div class="setting-block">
+          <div class="setting-label">Voice</div>
+          <p class="setting-help">
+            Voice reactions coming soon…
+          </p>
+        </div>
+
+        <button class="menu-btn" onclick="closeSettingsMenu()">Close</button>
       </div>
     </div>
 

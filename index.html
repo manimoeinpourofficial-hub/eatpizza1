@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Eat Pizza Final Edition</title>
+  <title>Eat Pizza · Final Edition · ANFO</title>
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
@@ -13,11 +13,12 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
 </head>
+
 <body>
   <div id="gameContainer">
     <canvas id="gameCanvas"></canvas>
 
-    <!-- HUD simple top bar -->
+    <!-- HUD -->
     <div id="hudTop">
       <div class="hud-left">
         <span id="hudScore">Score: 0</span>
@@ -30,10 +31,7 @@
       </div>
     </div>
 
-    <!-- Online players placeholder -->
-    <div id="onlinePlayersBar"></div>
-
-    <!-- Status toast -->
+    <!-- Toast -->
     <div id="statusToast"></div>
 
     <!-- LOADING -->
@@ -49,41 +47,42 @@
       </div>
     </div>
 
-   <div id="startMenu" class="start-overlay">
-  <div class="start-panel">
-    <div class="start-logo-wrap">
-      <h1 class="start-logo">Eat Pizza</h1>
-      <div class="start-subtitle">ANFO</div>
+    <!-- START MENU -->
+    <div id="startMenu" class="start-overlay hidden">
+      <div class="start-panel">
+        <div class="start-logo-wrap">
+          <h1 class="start-logo">Eat Pizza</h1>
+          <div class="start-subtitle">ANFO</div>
+        </div>
+
+        <button id="playBtn" class="btn-play-main">Play</button>
+
+        <div class="mode-row">
+          <button class="mode-chip" data-mode="easy">Easy</button>
+          <button class="mode-chip selected" data-mode="normal">Normal</button>
+          <button class="mode-chip" data-mode="hard">Hard</button>
+        </div>
+
+        <div class="menu-grid">
+          <button class="menu-tile" data-action="shop">Shop</button>
+          <button class="menu-tile" data-action="skins">Skins</button>
+          <button class="menu-tile" data-action="daily">Daily</button>
+          <button class="menu-tile" data-action="weekly">Weekly</button>
+          <button class="menu-tile" data-action="leaderboard">Top</button>
+          <button class="menu-tile" data-action="profile">Profile</button>
+          <button class="menu-tile" data-action="voice">Voice</button>
+          <button class="menu-tile" data-action="settings">Settings</button>
+        </div>
+      </div>
     </div>
 
-    <button id="playBtn" class="btn-play-main">Play</button>
-
-    <div class="mode-row">
-      <button class="mode-chip" data-mode="easy">Easy</button>
-      <button class="mode-chip selected" data-mode="normal">Normal</button>
-      <button class="mode-chip" data-mode="hard">Hard</button>
-    </div>
-
-    <div class="menu-grid">
-      <button class="menu-tile" data-action="shop">Shop</button>
-      <button class="menu-tile" data-action="skins">Skins</button>
-      <button class="menu-tile" data-action="daily">Daily</button>
-      <button class="menu-tile" data-action="weekly">Weekly</button>
-      <button class="menu-tile" data-action="leaderboard">Top</button>
-      <button class="menu-tile" data-action="profile">Profile</button>
-      <button class="menu-tile" data-action="voice">Voice</button>
-      <button class="menu-tile" data-action="settings">Settings</button>
-    </div>
-  </div>
-</div>
     <!-- PAUSE MENU -->
     <div id="pauseMenu" class="overlay hidden">
       <div class="menu-box small">
         <h2>Paused</h2>
-        <div>
-          <button class="menu-btn primary" onclick="togglePause()">Resume</button>
-          <button class="menu-btn" onclick="goToMainMenu()">Main Menu</button>
-        </div>
+        <button class="menu-btn primary" onclick="togglePause()">Resume</button>
+        <button class="menu-btn" onclick="goToMainMenu()">Main Menu</button>
+
         <div class="pause-settings">
           <div class="setting-row">
             <span>Sound</span>
@@ -95,25 +94,19 @@
       </div>
     </div>
 
-    <!-- PROFILE MENU -->
+    <!-- PROFILE -->
     <div id="profileMenu" class="modal hidden">
       <div class="modal-content profile-box">
         <h2>Profile</h2>
         <input id="usernameInput" class="input" placeholder="Your name">
+
         <div class="avatar-row">
-          <div class="avatar" data-id="avatar1">
-            <img src="avatar1.png" alt="">
-          </div>
-          <div class="avatar" data-id="avatar2">
-            <img src="avatar2.png" alt="">
-          </div>
-          <div class="avatar" data-id="avatar3">
-            <img src="avatar3.png" alt="">
-          </div>
-          <div class="avatar" data-id="avatar4">
-            <img src="avatar4.png" alt="">
-          </div>
+          <div class="avatar" data-id="avatar1"><img src="avatar1.png"></div>
+          <div class="avatar" data-id="avatar2"><img src="avatar2.png"></div>
+          <div class="avatar" data-id="avatar3"><img src="avatar3.png"></div>
+          <div class="avatar" data-id="avatar4"><img src="avatar4.png"></div>
         </div>
+
         <div class="modal-actions">
           <button id="saveProfileBtn" class="menu-btn primary">Save</button>
           <button id="closeProfileBtn" class="menu-btn">Close</button>
@@ -121,7 +114,7 @@
       </div>
     </div>
 
-    <!-- SKIN MENU -->
+    <!-- SKINS -->
     <div id="skinMenu" class="modal hidden">
       <div class="modal-content">
         <h2>Skins</h2>
@@ -130,7 +123,7 @@
       </div>
     </div>
 
-    <!-- SHOP MENU -->
+    <!-- SHOP -->
     <div id="shopMenu" class="modal hidden">
       <div class="modal-content">
         <h2>Shop</h2>
@@ -139,7 +132,7 @@
       </div>
     </div>
 
-    <!-- DAILY CHALLENGES -->
+    <!-- DAILY -->
     <div id="challengeMenu" class="modal hidden">
       <div class="modal-content">
         <h2>🔥 Daily Challenges</h2>
@@ -148,7 +141,7 @@
       </div>
     </div>
 
-    <!-- WEEKLY CHALLENGES -->
+    <!-- WEEKLY -->
     <div id="weeklyMenu" class="modal hidden">
       <div class="modal-content">
         <h2>⭐ Weekly Challenges</h2>
@@ -165,8 +158,10 @@
         <button class="menu-btn" onclick="closeLeaderboard()">Close</button>
       </div>
     </div>
+
   </div>
 
+  <!-- Firebase init -->
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyB8PV0S43tJdZYAgwSsXq5fpBrcukczgec",
@@ -178,8 +173,6 @@
       measurementId: "G-GKJ6YS8G4E"
     };
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
   </script>
 
   <script src="eat-pizza-final-edition.js"></script>

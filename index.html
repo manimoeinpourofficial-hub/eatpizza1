@@ -49,36 +49,33 @@
       </div>
     </div>
 
-    <!-- START MENU -->
-    <div id="startMenu" class="overlay hidden" style="pointer-events:auto;">
-      <div class="menu-box start-box">
-        <h1 class="logo">Eat Pizza</h1>
-        <p class="subtitle">Anfo</p>
-
-        <button id="playBtn" class="play-btn">Play</button>
-
-        <div class="mode-row">
-          <button class="mode-chip" data-mode="easy">Easy</button>
-          <button class="mode-chip selected" data-mode="normal">Normal</button>
-          <button class="mode-chip" data-mode="hard">Hard</button>
-        </div>
-
-        <div class="menu-row secondary-row">
-          <button class="secondary-btn" data-action="shop">Shop</button>
-          <button class="secondary-btn" data-action="daily">Daily</button>
-          <button class="secondary-btn" data-action="weekly">Weekly</button>
-          <button class="secondary-btn" data-action="leaderboard">Top</button>
-        </div>
-
-        <div class="menu-row secondary-row">
-          <button class="secondary-btn" data-action="skins">Skins</button>
-          <button class="secondary-btn" data-action="login">Profile</button>
-          <button class="secondary-btn" data-action="voice">Voice</button>
-          <button class="secondary-btn" data-action="settings">Settings</button>
-        </div>
-      </div>
+   <div id="startMenu" class="start-overlay">
+  <div class="start-panel">
+    <div class="start-logo-wrap">
+      <h1 class="start-logo">Eat Pizza</h1>
+      <div class="start-subtitle">ANFO</div>
     </div>
 
+    <button id="playBtn" class="btn-play-main">Play</button>
+
+    <div class="mode-row">
+      <button class="mode-chip" data-mode="easy">Easy</button>
+      <button class="mode-chip selected" data-mode="normal">Normal</button>
+      <button class="mode-chip" data-mode="hard">Hard</button>
+    </div>
+
+    <div class="menu-grid">
+      <button class="menu-tile" data-action="shop">Shop</button>
+      <button class="menu-tile" data-action="skins">Skins</button>
+      <button class="menu-tile" data-action="daily">Daily</button>
+      <button class="menu-tile" data-action="weekly">Weekly</button>
+      <button class="menu-tile" data-action="leaderboard">Top</button>
+      <button class="menu-tile" data-action="profile">Profile</button>
+      <button class="menu-tile" data-action="voice">Voice</button>
+      <button class="menu-tile" data-action="settings">Settings</button>
+    </div>
+  </div>
+</div>
     <!-- PAUSE MENU -->
     <div id="pauseMenu" class="overlay hidden">
       <div class="menu-box small">

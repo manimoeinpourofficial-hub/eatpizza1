@@ -66,6 +66,24 @@
     </div>
   </div>
 
+  <div id="leaderboardMenu" class="modal hidden">
+  <div class="modal-content leaderboard-box">
+
+    <div class="modal-header">
+      <h2>🏆 Leaderboard</h2>
+      <button class="close-btn" onclick="closeLeaderboard()">✖</button>
+    </div>
+
+    <div id="leaderboardLoading" class="leaderboard-loading">
+      Loading…
+    </div>
+
+    <div class="leaderboard-list"></div>
+
+  </div>
+</div>
+
+  
   <!-- HUD بالا -->
   <div class="hud" id="hud">
     <span id="hudScore">Score: 0</span>
@@ -162,5 +180,6 @@
   </script>
 </body>
 </html>
+
 
 

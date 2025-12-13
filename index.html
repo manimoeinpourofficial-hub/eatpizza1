@@ -11,58 +11,75 @@
 
   <link rel="stylesheet" href="style.css">
 
-  <!-- Firebase v8 -->
+  <!-- Firebase v8 (در صورت نخواستن، می‌تونی موقتاً کامنت کنی) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
-
 <body>
   <div id="gameContainer">
     <canvas id="gameCanvas"></canvas>
 
-    <!-- HUD -->
+    <!-- HUD بالا -->
     <div id="hud">
       <div class="hud-left">
         <span id="scoreLabel">Score: 0</span>
         <span id="comboLabel">Combo: x1</span>
-        <span id="pcLabel">PC: 0</span>
       </div>
       <div class="hud-right">
+        <span id="pcLabel">PC: 0</span>
         <span id="modeLabel">Mode: Normal</span>
-        <span id="statusLabel"></span>
       </div>
     </div>
 
-    <!-- Start Menu -->
+    <!-- پیام وضعیت کوتاه (Ultra Mode, SlowMo, …) -->
+    <div id="statusToast"></div>
+
+    <!-- Start Menu – cute و جمع‌وجور -->
     <div id="startMenu" class="overlay">
       <div class="menu-box">
-        <h1>🍕 Eat Pizza</h1>
-        <p>ANFO Arcade Edition</p>
+        <h1 class="logo">🍕 Eat Pizza</h1>
+        <p class="subtitle">ANFO Cute Arcade</p>
 
-        <button class="menu-btn" onclick="startGame('normal')">Start Normal</button>
-        <button class="menu-btn" onclick="startGame('hard')">Start Hard</button>
+        <div class="menu-row">
+          <button class="menu-btn primary" onclick="startGame('normal')">Start Normal</button>
+          <button class="menu-btn" onclick="startGame('hard')">Hard</button>
+        </div>
 
-        <button class="menu-btn" onclick="openShop()">Shop</button>
-        <button class="menu-btn" onclick="openChallenges()">Challenges</button>
-        <button class="menu-btn" onclick="openWeekly()">Weekly</button>
-        <button class="menu-btn" onclick="openLeaderboard()">Leaderboard</button>
+        <div class="menu-row">
+          <button class="menu-icon-btn" onclick="openShop()">
+            🛒<span>Shop</span>
+          </button>
+          <button class="menu-icon-btn" onclick="openChallenges()">
+            🔥<span>Daily</span>
+          </button>
+          <button class="menu-icon-btn" onclick="openWeekly()">
+            ⭐<span>Weekly</span>
+          </button>
+          <button class="menu-icon-btn" onclick="openLeaderboard()">
+            🏆<span>Top</span>
+          </button>
+        </div>
 
-        <button class="menu-btn" onclick="googleLogin()">Login with Google</button>
-        <button class="menu-btn" onclick="openEmailLogin()">Login with Email</button>
-        <button class="menu-btn" onclick="logout()">Logout</button>
+        <div class="menu-row login-row">
+          <button class="menu-small-btn" onclick="googleLogin()">Google</button>
+          <button class="menu-small-btn" onclick="openEmailLogin()">Email</button>
+          <button class="menu-small-btn" onclick="logout()">Logout</button>
+        </div>
 
-        <button class="menu-btn" onclick="toggleVoiceCheat()">Voice Cheat: <span id="voiceCheatState">Off</span></button>
+        <button class="menu-btn toggle-btn" onclick="toggleVoiceCheat()">
+          🎤 Voice Cheat: <span id="voiceCheatState">Off</span>
+        </button>
 
-        <div id="profileBox"></div>
+        <div id="profileBox" class="profile-box">Guest</div>
       </div>
     </div>
 
     <!-- Pause Menu -->
     <div id="pauseMenu" class="overlay hidden">
-      <div class="menu-box">
+      <div class="menu-box small">
         <h2>Paused</h2>
-        <button class="menu-btn" onclick="resumeGame()">Resume</button>
+        <button class="menu-btn primary" onclick="resumeGame()">Resume</button>
         <button class="menu-btn" onclick="goToStart()">Main Menu</button>
       </div>
     </div>
@@ -85,27 +102,27 @@
         <h2>Email Login</h2>
         <input id="emailInput" type="email" placeholder="Email" class="input">
         <input id="passwordInput" type="password" placeholder="Password" class="input">
-        <button onclick="emailLogin()" class="menu-btn">Login</button>
+        <button onclick="emailLogin()" class="menu-btn primary">Login</button>
         <button onclick="emailSignup()" class="menu-btn">Sign Up</button>
-        <button onclick="closeEmailLogin()" class="close-btn">Close</button>
+        <button onclick="closeEmailLogin()" class="close-btn full">Close</button>
       </div>
     </div>
 
     <!-- Challenges Modal -->
     <div id="challengeMenu" class="modal hidden">
       <div class="modal-content challenge-box">
-        <h2>🔥 Challenges</h2>
+        <h2>🔥 Daily & Achievements</h2>
         <div id="challengeList"></div>
-        <button class="close-btn" onclick="closeChallenges()">Close</button>
+        <button class="close-btn full" onclick="closeChallenges()">Close</button>
       </div>
     </div>
 
     <!-- Weekly Modal -->
     <div id="weeklyMenu" class="modal hidden">
       <div class="modal-content challenge-box">
-        <h2>🔥 Weekly Challenges</h2>
+        <h2>⭐ Weekly Challenges</h2>
         <div id="weeklyList"></div>
-        <button class="close-btn" onclick="closeWeekly()">Close</button>
+        <button class="close-btn full" onclick="closeWeekly()">Close</button>
       </div>
     </div>
 
@@ -116,14 +133,12 @@
         <div id="shopFeatured"></div>
         <hr>
         <div id="shopSkins"></div>
-        <button class="close-btn" onclick="closeShop()">Close</button>
+        <button class="close-btn full" onclick="closeShop()">Close</button>
       </div>
     </div>
-
   </div>
 
-  <!-- ✅ فقط یک فایل JS -->
+  <!-- فقط یک فایل JS -->
   <script src="script.js"></script>
-
 </body>
 </html>

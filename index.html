@@ -111,17 +111,11 @@
     </div>
   </div>
 
-  
-<!-- ✅ Firebase Core -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <!-- ✅ Firebase v8 (سازگار با بازی تو) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-<!-- ✅ Firebase Authentication -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js"></script>
-
-<!-- ✅ Firebase Firestore Database -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
-
-<!-- ✅ Firebase Config (کد مخصوص پروژهٔ تو) -->
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyB8PV0S43tJdZYAgwSsXq5fpBrcukczgec",
@@ -133,15 +127,16 @@
     measurementId: "G-GKJ6YS8G4E"
   };
 
-  // ✅ Initialize Firebase
-  const app = firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(firebaseConfig);
+
+  // ✅ این دو خط حالا ۱۰۰٪ کار می‌کنن
   const auth = firebase.auth();
   const db = firebase.firestore();
 </script>
 
-<!-- ✅ فایل اصلی بازی -->
 <script src="script.js"></script>
 
+  
   <!-- جلوگیری از اسکرول و زوم صفحه -->
   <script>
     const blockEvent = e => { e.preventDefault(); e.stopPropagation(); };
@@ -167,4 +162,5 @@
   </script>
 </body>
 </html>
+
 

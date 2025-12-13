@@ -1,27 +1,18 @@
 // ============================================
-//  Optional Firebase config (safe fallback)
+//  Firebase Safe Mode (Compat v9.6.11)
+//  (Online only if config + internet OK)
 // ============================================
 let auth = null, db = null, firebaseReady = false;
-
 try {
-  if (window.firebase && firebase.apps && firebase.apps.length === 0) {
-    const firebaseConfig = {
-  apiKey: "AIzaSyB8PV0S43tJdZYAgwSsXq5fpBrcukczgec",
-  authDomain: "eat-pizza-b1651.firebaseapp.com",
-  projectId: "eat-pizza-b1651",
-  storageBucket: "eat-pizza-b1651.firebasestorage.app",
-  messagingSenderId: "691132791942",
-  appId: "1:691132791942:web:90070f3e73940e6916e507",
-  measurementId: "G-GKJ6YS8G4E"    };
-    firebase.initializeApp(firebaseConfig);
-  }
   if (window.firebase && firebase.apps && firebase.apps.length > 0) {
     auth = firebase.auth();
     db = firebase.firestore();
     firebaseReady = true;
+  } else {
+    console.warn("Firebase app not initialized, running offline.");
   }
 } catch (e) {
-  console.warn("Firebase not configured, running offline only.");
+  console.warn("Firebase not available, running offline.", e);
 }
 
 // ============================================
@@ -52,6 +43,7 @@ const playBtn = document.getElementById("playBtn");
 const modeChips = document.querySelectorAll(".mode-chip");
 const menuTiles = document.querySelectorAll(".menu-tile");
 const pauseMenu = document.getElementById("pauseMenu");
+const pauseBtn = document.getElementById("pauseBtn");
 const hudScore = document.getElementById("hudScore");
 const hudHigh  = document.getElementById("hudHigh");
 const hudMode  = document.getElementById("hudMode");
@@ -62,6 +54,8 @@ const shopMenu = document.getElementById("shopMenu");
 const shopList = shopMenu ? shopMenu.querySelector(".shop-list") : null;
 const challengeMenu = document.getElementById("challengeMenu");
 const challengeList = challengeMenu ? challengeMenu.querySelector("#challengeList") : null;
+const weeklyMenu = document.getElementById("weeklyMenu");
+const weeklyList = weeklyMenu ? weeklyMenu.querySelector("#weeklyList") : null;
 const leaderboardMenu = document.getElementById("leaderboardMenu");
 
 // Profile DOM
@@ -70,10 +64,14 @@ const usernameInput = document.getElementById("usernameInput");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const closeProfileBtn = document.getElementById("closeProfileBtn");
 
-// Loading screen + fun loading
+// Loading screen
 const loadingScreen = document.getElementById("loadingScreen");
-const loadingCanvas = document.getElementById("loadingCanvas");
+const loadingCanvas = document.createElement("canvas");
 const lc = loadingCanvas.getContext("2d");
+loadingCanvas.id = "loadingCanvas";
+loadingScreen && loadingScreen.appendChild(loadingCanvas);
+
+let Wl = window.innerWidth, Hl = window.innerHeight;
 
 // Profile state
 let profile = JSON.parse(localStorage.getItem("profile") || "null");
@@ -83,22 +81,25 @@ let pendingStartAfterProfile = false;
 // ============================================
 //  Resize
 // ============================================
-function R() {
+function resizeAll() {
   const r = devicePixelRatio || 1;
   W = innerWidth; H = innerHeight;
   c.width = W * r; c.height = H * r;
   x.setTransform(r, 0, 0, r, 0, 0);
+
   let s = Math.min(W, H) * 0.22;
   p.w = p.h = s;
   p.x = (W - s) / 2;
   p.y = H - s - 10;
   item = s * 0.6;
   bs = s * 0.25;
-  loadingCanvas.width = W;
-  loadingCanvas.height = H;
+
+  Wl = W; Hl = H;
+  loadingCanvas.width = Wl;
+  loadingCanvas.height = Hl;
 }
-R();
-addEventListener("resize", R);
+resizeAll();
+addEventListener("resize", resizeAll);
 
 // ============================================
 //  Images & Audio
@@ -277,7 +278,7 @@ function updateShopUI() {
 }
 
 // ============================================
-//  Missions (daily, ساده)
+//  Missions (Daily + Weekly, unified UI)
 // ============================================
 const dailyMissions = [
   { id: "d1", title: "Collect 20 pizzas", goal: 20, progress: 0, reward: 25, type: "pizza" },
@@ -285,7 +286,15 @@ const dailyMissions = [
   { id: "d3", title: "Hit 5 obstacles",   goal: 5, progress: 0, reward: 40, type: "obstacle" }
 ];
 
+// Weekly: reset every Saturday
+const weeklyMissions = [
+  { id: "w1", title: "Play 10 games",       goal: 10,  progress: 0, reward: 100, type: "games" },
+  { id: "w2", title: "Reach 500 score",     goal: 500, progress: 0, reward: 150, type: "score" },
+  { id: "w3", title: "Collect 200 pizzas",  goal: 200, progress: 0, reward: 200, type: "pizzaTotal" }
+];
+
 function loadMissions() {
+  // Daily
   const d = localStorage.getItem("dailyMissions");
   const last = localStorage.getItem("dailyReset");
   const today = new Date().toDateString();
@@ -299,35 +308,76 @@ function loadMissions() {
       arr.forEach((m, i) => dailyMissions[i].progress = m.progress);
     } catch {}
   }
+
+  // Weekly
+  const w = localStorage.getItem("weeklyMissions");
+  const wLast = localStorage.getItem("weeklyReset");
+  const now = new Date();
+  const day = now.getDay(); // 0=Sunday, 6=Saturday
+  const currentWeekKey = now.getFullYear() + "-W" + getWeekNumber(now);
+  // reset if week changed OR last reset before this week's Saturday
+  if (wLast !== currentWeekKey || day === 6 && wLast !== currentWeekKey) {
+    weeklyMissions.forEach(m => m.progress = 0);
+    localStorage.setItem("weeklyReset", currentWeekKey);
+    saveMissions();
+  } else if (w) {
+    try {
+      const arr = JSON.parse(w);
+      arr.forEach((m, i) => weeklyMissions[i].progress = m.progress);
+    } catch {}
+  }
 }
+function getWeekNumber(d) {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
 function saveMissions() {
   localStorage.setItem("dailyMissions", JSON.stringify(dailyMissions));
+  localStorage.setItem("weeklyMissions", JSON.stringify(weeklyMissions));
 }
-function updateChallengesUI() {
-  if (!challengeList) return;
-  challengeList.innerHTML = "";
-  dailyMissions.forEach(m => {
+
+// unified UI builder
+function buildMissionList(container, missions, isWeekly) {
+  if (!container) return;
+  container.innerHTML = "";
+  missions.forEach(m => {
     const pct = Math.min(100, Math.round(100 * Math.max(0, m.progress) / m.goal));
+    const done = m.progress >= m.goal;
     const div = document.createElement("div");
-    div.className = "mission-item" + (m.progress >= m.goal ? " completed" : "");
+    div.className = "mission-item" + (done ? " completed" : "");
     div.innerHTML = `
       <div class="mission-title">${m.title}</div>
       <div class="mission-bar"><div class="mission-fill" style="width:${pct}%"></div></div>
       <div class="mission-info">${m.progress > 0 ? m.progress : 0}/${m.goal} — ${m.reward} PC</div>`;
-    if (m.progress >= m.goal) {
+    if (done) {
       div.onclick = () => {
         if (m.progress < m.goal) return;
         pc += m.reward; localStorage.setItem("pc", pc); updateHUD();
-        m.progress = -999; saveMissions(); updateChallengesUI();
+        m.progress = -999; saveMissions();
+        if (isWeekly) updateWeeklyUI(); else updateChallengesUI();
         showToast(`Reward +${m.reward} PC`);
         profile && saveProfileOnline();
       };
     }
-    challengeList.appendChild(div);
+    container.appendChild(div);
   });
 }
+
+function updateChallengesUI() {
+  buildMissionList(challengeList, dailyMissions, false);
+}
+function updateWeeklyUI() {
+  buildMissionList(weeklyList, weeklyMissions, true);
+}
+
 function openChallengeMenu()  { challengeMenu && (challengeMenu.classList.remove("hidden"), updateChallengesUI()); }
 function closeChallengeMenu() { challengeMenu && challengeMenu.classList.add("hidden"); }
+function openWeeklyMenu()    { weeklyMenu && (weeklyMenu.classList.remove("hidden"), updateWeeklyUI()); }
+function closeWeeklyMenu()   { weeklyMenu && weeklyMenu.classList.add("hidden"); }
 
 // ============================================
 //  Profile (local + optional online)
@@ -371,16 +421,16 @@ saveProfileBtn && (saveProfileBtn.onclick = () => {
 closeProfileBtn && (closeProfileBtn.onclick = closeProfileMenu);
 
 // ============================================
-//  Firebase online sync (امن در صورت نبود config)
+//  Firebase online sync (Safe)
 // ============================================
 if (firebaseReady && auth) {
   auth.signInAnonymously()
     .then(() => { console.log("✅ Firebase Connected:", auth.currentUser.uid); loadOnlineData(); })
-    .catch(err => console.error("❌ Firebase Error:", err));
+    .catch(err => console.error("❌ Firebase Error (Safe Mode, offline):", err));
 }
 
 function saveProfileOnline() {
-  if (!firebaseReady || !auth || !profile) return;
+  if (!firebaseReady || !auth || !db || !profile) return;
   const user = auth.currentUser; if (!user) return;
   db.collection("profiles").doc(user.uid).set({
     username: profile.username,
@@ -391,7 +441,7 @@ function saveProfileOnline() {
   }, { merge: true }).catch(console.error);
 }
 function saveHighScoreOnline() {
-  if (!firebaseReady || !auth) return;
+  if (!firebaseReady || !auth || !db) return;
   const user = auth.currentUser; if (!user) return;
   db.collection("scores").doc(user.uid).set({
     score: hs,
@@ -400,7 +450,7 @@ function saveHighScoreOnline() {
   }, { merge: true }).catch(console.error);
 }
 function loadOnlineData() {
-  if (!firebaseReady || !auth) return;
+  if (!firebaseReady || !auth || !db) return;
   const user = auth.currentUser; if (!user) return;
   db.collection("profiles").doc(user.uid).get().then(doc => {
     if (doc.exists) {
@@ -413,7 +463,7 @@ function loadOnlineData() {
       localStorage.setItem("skin", currentSkin);
       updateSkinMenu(); updateShopUI(); updateHUD();
     }
-  });
+  }).catch(console.error);
   db.collection("scores").doc(user.uid).get().then(doc => {
     if (doc.exists) {
       const d = doc.data();
@@ -421,18 +471,18 @@ function loadOnlineData() {
       localStorage.setItem("hs", hs);
       updateHUD();
     }
-  });
+  }).catch(console.error);
 }
 
 // ============================================
-//  Leaderboard (اختیاری)
+//  Leaderboard (Safe)
 // ============================================
 function openLeaderboard() {
   if (!leaderboardMenu) return;
   leaderboardMenu.classList.remove("hidden");
   const list = leaderboardMenu.querySelector(".leaderboard-list");
   if (!firebaseReady || !db) {
-    list.innerHTML = "Offline mode (no Firebase config)";
+    list.innerHTML = "Offline mode (no Firebase / no internet)";
     return;
   }
   list.innerHTML = "Loading...";
@@ -596,6 +646,7 @@ addEventListener("keydown", e => {
     if (start && !go && !paused) shoot();
   }
   if (e.code === "KeyP" && start && !go) togglePause();
+  if (e.code === "Enter" && !start && startMenu) startGame();
 });
 addEventListener("keyup", e => {
   if (e.code === "Space") canShootKey = true;
@@ -666,8 +717,14 @@ function upd() {
       if (localStorage.getItem("upg_double") === "1") pcGain = 2;
       pc += pcGain; localStorage.setItem("pc", pc);
 
+      // Daily
       dailyMissions.forEach(m => {
         if (m.type === "pizza" && m.progress >= 0) m.progress++;
+        if (m.type === "score" && score >= m.goal && m.progress >= 0) m.progress = m.goal;
+      });
+      // Weekly
+      weeklyMissions.forEach(m => {
+        if (m.type === "pizzaTotal" && m.progress >= 0) m.progress++;
         if (m.type === "score" && score >= m.goal && m.progress >= 0) m.progress = m.goal;
       });
 
@@ -692,6 +749,10 @@ function upd() {
       if (!godMode && ultraModeUntil < now) {
         go = true; playSound("gameOver");
         spawnParticles(p.x + p.w / 2, p.y + p.h / 2, "red", 15); shake = 20;
+        // Weekly: games played
+        weeklyMissions.forEach(m => {
+          if (m.type === "games" && m.progress >= 0) m.progress++;
+        });
       } else {
         obs.splice(i, 1);
         spawnParticles(o.x + o.w / 2, o.y + o.h / 2, "#00faff", 15); shake = 5;
@@ -861,6 +922,7 @@ function startGame() {
   if (soundOn) bg.play().catch(() => {});
 }
 function togglePause() {
+  if (!start || go) return;
   paused = !paused;
   pauseMenu && pauseMenu.classList.toggle("hidden", !paused);
 }
@@ -872,10 +934,13 @@ function goToMainMenu() {
 }
 function toggleSound() {
   soundOn = !soundOn;
+  const el = document.getElementById("soundState");
+  if (el) el.textContent = soundOn ? "On" : "Off";
   if (!soundOn) bg.pause(); else if (start) bg.play().catch(() => {});
 }
 
 playBtn && (playBtn.onclick = () => { startGame(); });
+pauseBtn && (pauseBtn.onclick = () => togglePause());
 modeChips.forEach(chip => {
   chip.onclick = () => {
     modeChips.forEach(c => c.classList.remove("selected"));
@@ -889,8 +954,10 @@ menuTiles.forEach(btn => {
     if (a === "shop") openShopMenu();
     else if (a === "skins") openSkinMenu();
     else if (a === "daily") openChallengeMenu();
+    else if (a === "weekly") openWeeklyMenu();
     else if (a === "profile") openProfileMenu();
     else if (a === "leaderboard") openLeaderboard();
+    else if (a === "voice") showToast("Voice coming soon");
     else if (a === "settings") showToast("Settings soon");
   };
 });
@@ -901,7 +968,7 @@ menuTiles.forEach(btn => {
 let fallingPizzas = [];
 function spawnLoadingPizza() {
   fallingPizzas.push({
-    x: Math.random() * W,
+    x: Math.random() * Wl,
     y: -50,
     s: 40 + Math.random() * 30,
     speed: 1 + Math.random() * 2,
@@ -909,10 +976,14 @@ function spawnLoadingPizza() {
     rv: (Math.random() - 0.5) * 0.05
   });
 }
-setInterval(spawnLoadingPizza, 200);
+setInterval(() => {
+  if (!loadingScreen) return;
+  spawnLoadingPizza();
+}, 200);
 
 function loadingLoop() {
-  lc.clearRect(0, 0, W, H);
+  if (!loadingScreen) return;
+  lc.clearRect(0, 0, Wl, Hl);
   fallingPizzas.forEach(pz => {
     pz.y += pz.speed; pz.rot += pz.rv;
     lc.save();
@@ -921,7 +992,7 @@ function loadingLoop() {
     if (img.r.complete) lc.drawImage(img.r, -pz.s / 2, -pz.s / 2, pz.s, pz.s);
     lc.restore();
   });
-  fallingPizzas = fallingPizzas.filter(pz => pz.y < H + 60);
+  fallingPizzas = fallingPizzas.filter(pz => pz.y < Hl + 60);
   requestAnimationFrame(loadingLoop);
 }
 loadingLoop();
@@ -937,6 +1008,11 @@ const assets = [
 let loadedCount = 0;
 function assetDone() {
   loadedCount++;
+  const percent = Math.min(100, Math.round(loadedCount / assets.length * 100));
+  const fill = document.getElementById("loadingFill");
+  const percentEl = document.getElementById("loadingPercent");
+  if (fill) fill.style.width = percent + "%";
+  if (percentEl) percentEl.textContent = percent + "%";
   if (loadedCount >= assets.length) {
     setTimeout(() => {
       if (loadingScreen) {
@@ -944,7 +1020,7 @@ function assetDone() {
         setTimeout(() => loadingScreen.remove(), 400);
       }
       startMenu && startMenu.classList.remove("hidden");
-      updateSkinMenu(); updateShopUI(); loadMissions(); updateChallengesUI(); updateHUD();
+      updateSkinMenu(); updateShopUI(); loadMissions(); updateChallengesUI(); updateWeeklyUI(); updateHUD();
     }, 400);
   }
 }
@@ -956,7 +1032,9 @@ assets.forEach(a => {
   }
 });
 
-// Expose for HTML buttons
+// ============================================
+//  Export for HTML buttons
+// ============================================
 window.goToMainMenu = goToMainMenu;
 window.toggleSound = toggleSound;
 window.openShopMenu = openShopMenu;
@@ -965,7 +1043,9 @@ window.openSkinMenu = openSkinMenu;
 window.closeSkinMenu = closeSkinMenu;
 window.openChallengeMenu = openChallengeMenu;
 window.closeChallengeMenu = closeChallengeMenu;
+window.openWeeklyMenu = openWeeklyMenu;
+window.closeWeeklyMenu = closeWeeklyMenu;
 window.openLeaderboard = openLeaderboard;
 window.closeLeaderboard = closeLeaderboard;
 
-console.log("✅ Eat Pizza Final Edition Loaded");
+console.log("✅ Eat Pizza Final Edition (Safe Mode) Loaded");

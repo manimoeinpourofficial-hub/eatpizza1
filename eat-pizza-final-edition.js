@@ -530,9 +530,20 @@ function loadOnlineData() {
   const user = auth.currentUser;
   if (!user) return;
 
+  // Load Profile
   db.collection("profiles").doc(user.uid).get()
     .then(doc => {
-      if (!doc.exists) return;
+      if (!doc.exists) {
+        db.collection("profiles").doc(user.uid).set({
+          username: "Guest",
+          avatar: "p1",
+          skin: "p",
+          pc: 0,
+          created: Date.now()
+        });
+        return;
+      }
+
       const d = doc.data();
       profile = { username: d.username, avatar: d.avatar, skin: d.skin || "p" };
       pc = d.pc != null ? d.pc : pc;
@@ -544,9 +555,18 @@ function loadOnlineData() {
     })
     .catch(err => console.warn("profile load fail", err));
 
+  // Load Score
   db.collection("scores").doc(user.uid).get()
     .then(doc => {
-      if (!doc.exists) return;
+      if (!doc.exists) {
+        db.collection("scores").doc(user.uid).set({
+          score: 0,
+          username: profile ? profile.username : "Guest",
+          created: Date.now()
+        });
+        return;
+      }
+
       const d = doc.data();
       hs = d.score || hs;
       localStorage.setItem("hs", hs);
@@ -554,7 +574,6 @@ function loadOnlineData() {
     })
     .catch(err => console.warn("score load fail", err));
 }
-
 /* -------------------------------
    Leaderboard (Safe Mode)
 --------------------------------*/

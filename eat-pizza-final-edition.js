@@ -110,7 +110,7 @@ function resizeAll() {
   let s = Math.min(W, H) * 0.22;
   p.w = p.h = s;
   p.x = (W - s) / 2;
-  p.y = H - s - 10;
+  p.y = H - s - 8; // چسبیده به پایین
   item = s * 0.6;
   bs = s * 0.25;
 
@@ -158,9 +158,11 @@ function playSound(name) {
 }
 
 // ============================================
-//  Background cover
+//  Background cover (سفید کمرنگ + بکگراند)
 // ============================================
 function drawBG() {
+  x.fillStyle = "rgba(255,255,255,0.08)";
+  x.fillRect(0, 0, W, H);
   if (!img.bg.complete) return;
   const iw = img.bg.width, ih = img.bg.height;
   if (!iw || !ih) return;
@@ -169,7 +171,7 @@ function drawBG() {
   if (ir > cr) { dh = H; dw = ir * H; }
   else { dw = W; dh = W / ir; }
   const dx = (W - dw) / 2, dy = (H - dh) / 2;
-  x.save(); x.globalAlpha = 0.25; x.drawImage(img.bg, dx, dy, dw, dh); x.restore();
+  x.save(); x.globalAlpha = 0.15; x.drawImage(img.bg, dx, dy, dw, dh); x.restore();
 }
 
 // ============================================
@@ -554,9 +556,9 @@ let nextSpecialPizza = 0;
 
 function applyMode(mode) {
   currentMode = mode;
-  if (mode === "easy")   { gameSpeed = 0.7; zigzagIntensity = 0.4; }
-  else if (mode === "normal") { gameSpeed = 1.0; zigzagIntensity = 1; }
-  else                   { gameSpeed = 1.4; zigzagIntensity = 1.8; }
+  if (mode === "easy")   { gameSpeed = 0.7; zigzagIntensity = 0; }
+  else if (mode === "normal") { gameSpeed = 1.0; zigzagIntensity = 0; }
+  else                   { gameSpeed = 1.4; zigzagIntensity = 1.8; } // فقط Hard زیگزاگ
   updateHUD();
 }
 
@@ -581,7 +583,8 @@ function reset() {
 }
 
 function spawn(type, w, h, zigChance = 0.3) {
-  const zig = Math.random() < zigChance;
+  const allowZig = (currentMode === "hard");
+  const zig = allowZig && Math.random() < zigChance;
   return {
     x: Math.random() * (W - w),
     y: -h,
@@ -596,7 +599,7 @@ function spawn(type, w, h, zigChance = 0.3) {
   };
 }
 function applyZigzag(o, sp) {
-  if (!o.zigzag) return;
+  if (!o.zigzag || zigzagIntensity === 0) return;
   if (o.baseX == null) o.baseX = o.x;
   o.t += (o.zigSpeed || 0.05) * sp;
   o.x = o.baseX + Math.sin(o.t) * o.amp * zigzagIntensity;
@@ -705,9 +708,17 @@ addEventListener("touchstart", e => {
 }, { passive: true });
 
 addEventListener("keydown", e => {
-  if (e.code === "Space" && canShootKey) {
-    canShootKey = false;
-    if (start && !go && !paused) shoot();
+  if (e.code === "Space") {
+    if (go) {
+      // بعد از باخت، Space برای ریست
+      go = false;
+      reset();
+      return;
+    }
+    if (canShootKey) {
+      canShootKey = false;
+      if (start && !go && !paused) shoot();
+    }
   }
   if (e.code === "KeyP" && start && !go) togglePause();
   if (e.code === "Enter" && !start && startMenu) startGame();
@@ -871,7 +882,6 @@ function upd() {
     const o = obs[i];
     o.y += 1.5 * effSp; applyZigzag(o, effSp);
     if (coll(ph, o)) {
-      // برخورد با shit → مستقیم GameOver
       go = true; playSound("gameOver");
       spawnParticles(p.x + p.w / 2, p.y + p.h / 2, "red", 15); shake = 20;
       weeklyMissions.forEach(m => {
@@ -882,7 +892,7 @@ function upd() {
     }
   }
 
-  // greens (drug: less pizzas, hunger -30)
+  // greens (drug: hunger -30, pizzas -30% for 10s)
   for (let i = greens.length - 1; i >= 0; i--) {
     const g = greens[i];
     g.y += 1.1 * effSp; applyZigzag(g, effSp);
@@ -897,7 +907,7 @@ function upd() {
     }
   }
 
-  // blues (weed: more pizzas, hunger +25)
+  // blues (weed: hunger +25, pizzas +25% for 10s)
   for (let i = blues.length - 1; i >= 0; i--) {
     const b = blues[i];
     b.y += 1.0 * effSp; applyZigzag(b, effSp);
@@ -911,7 +921,7 @@ function upd() {
     }
   }
 
-  // buffs (speed item)
+  // buffs (speed item: 10s faster + miss-1)
   for (let i = buffs.length - 1; i >= 0; i--) {
     const bf = buffs[i];
     bf.y += 1.3 * effSp; applyZigzag(bf, effSp);
@@ -967,7 +977,6 @@ function draw() {
   x.save(); x.clearRect(0, 0, W, H);
   const now = Date.now();
 
-  x.fillStyle = "#050505"; x.fillRect(0, 0, W, H);
   drawBG();
 
   if (shake > 0) {
@@ -1022,7 +1031,7 @@ function draw() {
   });
 
   if (comboText && now < comboUntil) {
-    x.textAlign = "center"; x.font = "24px Arial"; x.fillStyle = "#ff8800";
+    x.textAlign = "center"; x.font = "24px Arial"; x.fillStyle = "#facc15";
     x.fillText(comboText, W / 2, 70);
   }
   if (now < ultraModeUntil) {
@@ -1130,7 +1139,7 @@ function spawnLoadingPizza() {
 setInterval(() => {
   if (!loadingScreen) return;
   spawnLoadingPizza();
-}, 200);
+}, 220);
 
 function loadingLoop() {
   if (!loadingScreen) return;
@@ -1201,4 +1210,4 @@ window.openLeaderboard = openLeaderboard;
 window.closeLeaderboard = closeLeaderboard;
 window.closeSettingsMenu = closeSettingsMenu;
 
-console.log("✅ Eat Pizza Final Edition (Tilt + Hunger + Items) Loaded");
+console.log("✅ Eat Pizza Final Edition (Tilt + Hunger + Items + Clean UI) Loaded");

@@ -31,16 +31,26 @@ let paused = false;
 let currentMode = "normal";
 let soundOn = true;
 
-// SlowMo (چیت موبایل و قدیمی)
+// Effects
 let slowMoUntil = 0;
+let godMode = false, godModeUntil = 0;
+let feverActive = false, feverUntil = 0;
+let drugEffectUntil = 0, weedEffectUntil = 0;
 
-// God Mode (چیت ضد ضربه)
-let godMode = false;
-let godModeUntil = 0;
+// Skins
+let currentSkin = localStorage.getItem("skin") || "p";
+const skins = {
+  p: { name: "Default", unlocked: true, requireScore: 0 },
+  p1: { name: "Pro 500", unlocked: hs >= 500, requireScore: 500 },
+  p2: { name: "Master 1500", unlocked: hs >= 1500, requireScore: 1500 }
+};
 
-// Fever Mode
-let feverActive = false;
-let feverUntil = 0;
+// Mode tuning
+let zigzagIntensity = 1;
+let obstacleRate = 1;
+let pizzaRate = 1;
+let drugPower = 15;
+let weedPower = 10;
 
 // DOM refs
 const pauseMenu = document.getElementById("pauseMenu");
@@ -61,7 +71,6 @@ const hudMode = document.getElementById("hudMode");
 // START MENU refs
 const startMenu = document.getElementById("startMenu");
 const startGameBtn = document.getElementById("startGameBtn");
-const startLogo = document.getElementById("startLogo");
 
 // LOADING refs
 const loadingScreen = document.getElementById("loadingScreen");
@@ -76,6 +85,9 @@ const closeProfileBtn = document.getElementById("closeProfileBtn");
 const profileDisplay = document.getElementById("profileDisplay");
 const profileAvatarImg = document.getElementById("profileAvatar");
 const profileNameSpan = document.getElementById("profileName");
+
+// SKIN MENU refs (فرض می‌کنم تو HTML داری)
+const skinMenu = document.getElementById("skinMenu");
 
 let selectedAvatar = null;
 let profile = JSON.parse(localStorage.getItem("profile") || "null");
@@ -98,7 +110,6 @@ const makeAudio = src => {
 const sounds = {
   pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3")],
   drug: makeAudio("1.mp3"),
-  //weed: makeAudio("weed.mp3"),
   shit: makeAudio("4.mp3"),
   explode: makeAudio("gooz1.mp3"),
   gameOver: makeAudio("gameover.mp3")
@@ -109,11 +120,10 @@ bg.loop = true;
 bg.volume = 0.3;
 
 let cool = {};
-
 function playSound(name) {
   if (!start || !soundOn) return;
   const now = Date.now();
-  if (now - (cool[name] || 0) < 120) return;  // جلوگیری از اسپم زیاد
+  if (now - (cool[name] || 0) < 120) return;
   cool[name] = now;
 
   const s = sounds[name];
@@ -124,7 +134,6 @@ function playSound(name) {
   a.play().catch(() => {});
 }
 
-// صدای برخورد (shit) که همیشه باید پلی بشه
 function playHitSound() {
   const base = sounds.shit;
   if (!base) return;
@@ -161,20 +170,23 @@ const I = s => { let i = new Image(); i.src = s; return i; };
 
 const img = {
   p: I("PIZZA-KHOOR.png"),
+  p1: I("skin1.png"),
+  p2: I("skin2.png"),
   r: I("pizza1.png"),
   g: I("DRUG.png"),
   b: I("weed.webp"),
   o: I("shit.webp"),
   bu: I("bullet.png"),
   s: I("speed.png"),
-  fever: I("pizza44.png") // آیتم Fever
+  fever: I("pizza44.png")
 };
 
 // ---------------------------
 //  LOADING LOGIC
 // ---------------------------
 const assetsToLoad = [
-  img.p, img.r, img.g, img.b, img.o, img.bu, img.s, img.fever,
+  img.p, img.p1, img.p2,
+  img.r, img.g, img.b, img.o, img.bu, img.s, img.fever,
   ...Object.values(sounds).flat().filter(a => a instanceof Audio),
   bg
 ];
@@ -193,6 +205,7 @@ function updateLoadingProgress() {
       loadingScreen.style.display = "none";
       startMenu.classList.remove("hidden");
       updateProfileDisplay();
+      updateSkinMenu();
     }, 300);
   }
 }
@@ -207,7 +220,6 @@ assetsToLoad.forEach(asset => {
   }
 });
 
-// fallback
 setTimeout(() => {
   if (loadingScreen.style.display !== "none") {
     loadingFill.style.width = "100%";
@@ -215,6 +227,7 @@ setTimeout(() => {
     loadingScreen.style.display = "none";
     startMenu.classList.remove("hidden");
     updateProfileDisplay();
+    updateSkinMenu();
   }
 }, 8000);
 
@@ -234,10 +247,10 @@ document.querySelectorAll(".menu-btn").forEach(btn => {
     const act = btn.dataset.action;
     if (act === "login") {
       openProfileMenu();
-    } else if (act === "modes") {
-      // بعداً
+    } else if (act === "skins") {
+      openSkinMenu();
     } else if (act === "leaderboard") {
-      // بعداً
+      openLeaderboard();
     } else if (act === "settings") {
       // بعداً
     }
@@ -278,11 +291,12 @@ saveProfileBtn.addEventListener("click", () => {
   const username = usernameInput.value.trim();
   if (!username || !selectedAvatar) return;
 
-  profile = { username, avatar: selectedAvatar };
+  profile = { username, avatar: selectedAvatar, skin: currentSkin };
   localStorage.setItem("profile", JSON.stringify(profile));
 
   updateProfileDisplay();
   closeProfileMenu();
+  saveProfileOnline();
 });
 
 closeProfileBtn.addEventListener("click", closeProfileMenu);
@@ -295,6 +309,80 @@ function updateProfileDisplay() {
   profileAvatarImg.src = profile.avatar + ".png";
   profileNameSpan.textContent = profile.username;
   profileDisplay.classList.remove("hidden");
+}
+
+// ---------------------------
+//  SKIN SYSTEM (قابل آزادسازی)
+// ---------------------------
+function updateSkinUnlockedState() {
+  skins.p.unlocked = true;
+  skins.p1.unlocked = hs >= skins.p1.requireScore;
+  skins.p2.unlocked = hs >= skins.p2.requireScore;
+}
+
+function updateSkinMenu() {
+  if (!skinMenu) return;
+  updateSkinUnlockedState();
+
+  const container = skinMenu.querySelector(".skin-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  Object.keys(skins).forEach(id => {
+    const s = skins[id];
+    const div = document.createElement("div");
+    div.className = "skin-option";
+    div.dataset.skin = id;
+
+    const imgEl = document.createElement("img");
+    imgEl.src = img[id].src;
+    imgEl.className = "skin-img";
+
+    const label = document.createElement("div");
+    label.textContent = s.name + (s.requireScore ? ` (Score ${s.requireScore}+ )` : "");
+    label.className = "skin-label";
+
+    if (!s.unlocked) {
+      div.classList.add("locked");
+    }
+    if (currentSkin === id) {
+      div.classList.add("selected");
+    }
+
+    div.appendChild(imgEl);
+    div.appendChild(label);
+    container.appendChild(div);
+  });
+
+  container.querySelectorAll(".skin-option").forEach(opt => {
+    opt.addEventListener("click", () => {
+      const id = opt.dataset.skin;
+      const s = skins[id];
+      if (!s.unlocked) {
+        alert("این اسکین هنوز آزاد نشده!");
+        return;
+      }
+      currentSkin = id;
+      localStorage.setItem("skin", currentSkin);
+      if (profile) {
+        profile.skin = currentSkin;
+        localStorage.setItem("profile", JSON.stringify(profile));
+        saveProfileOnline();
+      }
+      updateSkinMenu();
+    });
+  });
+}
+
+function openSkinMenu() {
+  if (!skinMenu) return;
+  skinMenu.classList.remove("hidden");
+  updateSkinMenu();
+}
+
+function closeSkinMenu() {
+  if (!skinMenu) return;
+  skinMenu.classList.add("hidden");
 }
 
 // ---------------------------
@@ -313,12 +401,10 @@ c.addEventListener("touchmove", e => {
   move(e.touches[0].clientX - rect.left);
 }, { passive: true });
 
-// دابل‌تپ برای شلیک موبایل
 let lastTapTime = 0;
 
-// CHEAT 1: 20 input → +30 ammo
+// Cheat 1: 20 input → +30 ammo
 let inputTimes = [];
-
 function registerInputForCheat() {
   const now = Date.now();
   inputTimes.push(now);
@@ -330,7 +416,7 @@ function registerInputForCheat() {
   }
 }
 
-// SlowMo (چیت قدیمی)
+// SlowMo cheat buffer (برای سوایپ + چیزهای قدیمی)
 let cheatBuffer = "";
 
 function activateSlowMo() {
@@ -338,7 +424,7 @@ function activateSlowMo() {
   spawnParticles(p.x + p.w / 2, p.y, "#88ddff", 40);
 }
 
-// God Mode (چیت جدید با افکت نور)
+// God Mode cheat (ANFO)
 function activateGodMode(duration = 8000) {
   godMode = true;
   godModeUntil = Date.now() + duration;
@@ -354,7 +440,6 @@ function updateGodMode(now) {
   }
 }
 
-// تبدیل cheat ANFO به گاد مود
 addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   cheatBuffer += k;
@@ -365,7 +450,7 @@ addEventListener("keydown", e => {
   }
 });
 
-// CHEAT 3 MOBILE: Swipe pattern → SlowMo
+// Swipe cheat برای SlowMo
 let swipeState = [];
 let touchStartX = 0, touchStartY = 0;
 let touchActive = false;
@@ -433,7 +518,7 @@ c.addEventListener("touchend", e => {
   touchActive = false;
 });
 
-// شلیک تک‌تیر با کیبورد (Space)
+// شلیک تک‌تیر با Space
 let canShootKeyboard = true;
 
 addEventListener("keydown", e => {
@@ -460,7 +545,6 @@ addEventListener("keyup", e => {
   if (e.code === "Space") canShootKeyboard = true;
 });
 
-// دکمه Pause موبایل
 if (pauseBtn) {
   pauseBtn.addEventListener("click", () => {
     if (!start || go) return;
@@ -482,10 +566,8 @@ function shootSingle() {
     s: 12,
     img: img.bu
   });
-  // اگر خواستی صدای تیر اضافه کنی: playSound("explode") یا جدا بساز
 }
 
-// Collision helper
 const coll = (a, b) =>
   a.x < b.x + b.w &&
   a.x + a.w > b.x &&
@@ -493,20 +575,66 @@ const coll = (a, b) =>
   a.y + a.h > b.y;
 
 // ---------------------------
-//  MODE
+//  PARTICLES
+// ---------------------------
+function spawnParticles(x0, y0, color, count = 6) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: x0,
+      y: y0,
+      vx: (Math.random() - 0.5) * 3,
+      vy: (Math.random() - 0.5) * 3 - 1,
+      life: 400,
+      color
+    });
+  }
+}
+
+function updParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p0 = particles[i];
+    p0.x += p0.vx;
+    p0.y += p0.vy;
+    p0.life -= dt;
+    p0.vy += 0.05;
+    if (p0.life <= 0) particles.splice(i, 1);
+  }
+}
+
+// ---------------------------
+//  MODE SYSTEM
 // ---------------------------
 function applyMode(mode) {
   currentMode = mode;
 
   if (mode === "easy") {
-    gameSpeed = 0.6;
+    gameSpeed = 0.7;
     prob = 0.18;
-  } else if (mode === "normal") {
-    gameSpeed = 0.9;
+    zigzagIntensity = 0.5;
+    obstacleRate = 0.6;
+    pizzaRate = 1.3;
+    drugPower = 25;
+    weedPower = 5;
+  }
+
+  else if (mode === "normal") {
+    gameSpeed = 1.0;
     prob = 0.25;
-  } else if (mode === "hard") {
-    gameSpeed = 1.2;
-    prob = 0.3;
+    zigzagIntensity = 1.0;
+    obstacleRate = 1.0;
+    pizzaRate = 1.0;
+    drugPower = 15;
+    weedPower = 10;
+  }
+
+  else if (mode === "hard") {
+    gameSpeed = 1.4;
+    prob = 0.35;
+    zigzagIntensity = 1.8;
+    obstacleRate = 1.5;
+    pizzaRate = 0.8;
+    drugPower = 10;
+    weedPower = 20;
   }
 }
 
@@ -550,6 +678,9 @@ function reset() {
   feverActive = false;
   feverUntil = 0;
 
+  drugEffectUntil = 0;
+  weedEffectUntil = 0;
+
   applyMode(currentMode);
 
   const now = Date.now();
@@ -562,7 +693,7 @@ function reset() {
 }
 
 // ---------------------------
-//  COMBO
+//  COMBO SYSTEM
 // ---------------------------
 function handleComboPizzaTake() {
   const now = Date.now();
@@ -586,14 +717,14 @@ function breakCombo() {
 }
 
 // ---------------------------
-//  ZIGZAG (نسخه جذاب‌تر)
+//  ZIGZAG MOVEMENT
 // ---------------------------
 function applyZigzag(o, sp) {
   if (!o.zigzag) return;
 
   if (o.baseX == null) o.baseX = o.x;
 
-  o.t += (o.zigSpeed || 0.05) * sp;
+  o.t += (o.zigSpeed || 0.05) * sp * zigzagIntensity;
 
   const wave = Math.sin(o.t) * o.amp * o.dir;
   const noise = Math.sin(o.t * 0.3) * 5;
@@ -654,20 +785,26 @@ function spawn(type, w, h, chanceZig = 0.3) {
 }
 
 // ---------------------------
-//  HARDER OVER TIME
+//  LIMIT OBJECTS
 // ---------------------------
-setInterval(() => {
-  if (start && !go && !paused) {
-    if (currentMode === "easy") gameSpeed += 0.003;
-    else if (currentMode === "normal") gameSpeed += 0.007;
-    else gameSpeed += 0.015;
+function limitObjects() {
+  const max = {
+    red: 12,
+    obs: 8,
+    green: 4,
+    blue: 4,
+    buff: 3
+  };
 
-    if (gameSpeed > 3) gameSpeed = 3;
-  }
-}, 4000);
+  if (reds.length > max.red) reds.length = max.red;
+  if (obs.length > max.obs) obs.length = max.obs;
+  if (greens.length > max.green) greens.length = max.green;
+  if (blues.length > max.blue) blues.length = max.blue;
+  if (buffs.length > max.buff) buffs.length = max.buff;
+}
 
 // ---------------------------
-//  UPDATE
+//  UPDATE LOOP
 // ---------------------------
 function upd() {
   if (!start || go || paused) return;
@@ -685,46 +822,38 @@ function upd() {
   let effSp = sp * slowFactor;
   const dt = 16;
 
-  // ✅ محدود کردن تعداد آبجکت‌ها
-  reds = reds.slice(-20);
-  obs = obs.slice(-15);
-  greens = greens.slice(-8);
-  blues = blues.slice(-8);
-  buffs = buffs.slice(-8);
+  limitObjects();
 
-  // ✅ اسپاون پیتزا
+  // ---------------------------
+  //  SPAWN OBJECTS
+  // ---------------------------
   if (now > nextRed) {
     reds.push(spawn("red", item, item));
-    nextRed = now + 1700 / effSp;
+    nextRed = now + (1700 / effSp) / pizzaRate;
   }
 
-  // ✅ اسپاون مانع
   if (now > nextObs) {
-    if (Math.random() < 0.7) {
+    if (Math.random() < 0.7 * obstacleRate) {
       obs.push(spawn("obs", item * 0.8, item * 0.8));
     }
-    nextObs = now + 4000 / effSp;
+    nextObs = now + (4000 / effSp) / obstacleRate;
   }
 
-  // ✅ اسپاون سبز
   if (now > nextGreen && Math.random() < 0.2) {
     greens.push(spawn("green", item, item, 0.25));
     nextGreen = now + 6000;
   }
 
-  // ✅ اسپاون آبی
   if (now > nextBlue && Math.random() < 0.2) {
     blues.push(spawn("blue", item, item, 0.25));
     nextBlue = now + 8000;
   }
 
-  // ✅ اسپاون speed buff
   if (now > nextBuff && Math.random() < 0.25) {
     buffs.push(spawn("speed", item, item, 0.25));
     nextBuff = now + 9000;
   }
 
-  // ✅ اسپاون FEVER (pizza44)
   if (now > nextFever && Math.random() < 0.15) {
     buffs.push(spawn("fever", item, item, 0.25));
     nextFever = now + 15000;
@@ -750,6 +879,8 @@ function upd() {
       if (score > hs) {
         hs = score;
         localStorage.setItem("hs", hs);
+        updateSkinUnlockedState();
+        saveHighScoreOnline();
       }
 
       pizzaCount++;
@@ -801,7 +932,7 @@ function upd() {
   }
 
   // ---------------------------
-  //  GREENS
+  //  GREENS (DRUG)
   // ---------------------------
   for (let i = greens.length - 1; i >= 0; i--) {
     const g = greens[i];
@@ -809,16 +940,16 @@ function upd() {
     applyZigzag(g, effSp);
 
     if (coll(p, g)) {
-      hunger = Math.max(0, hunger - 15);
-      prob = Math.max(0, prob * 0.85);
+      hunger = Math.max(0, hunger - drugPower);
       greens.splice(i, 1);
       spawnParticles(g.x + g.w / 2, g.y + g.h / 2, "#00ff99", 8);
       playSound("drug");
+      drugEffectUntil = now + 1500;
     }
   }
 
   // ---------------------------
-  //  BLUES
+  //  BLUES (WEED)
   // ---------------------------
   for (let i = blues.length - 1; i >= 0; i--) {
     const b = blues[i];
@@ -826,10 +957,10 @@ function upd() {
     applyZigzag(b, effSp);
 
     if (coll(p, b)) {
-      hunger = Math.min(100, hunger + 10);
-      prob = Math.min(1, prob * 1.1);
+      hunger = Math.min(100, hunger + weedPower);
       blues.splice(i, 1);
       spawnParticles(b.x + b.w / 2, b.y + b.h / 2, "#00ccff", 8);
+      weedEffectUntil = now + 1500;
     }
   }
 
@@ -919,8 +1050,6 @@ function draw() {
   }
 
   if (!start) {
-    x.fillStyle = "transparent";
-    x.fillRect(0, 0, W, H);
     x.restore();
     return;
   }
@@ -934,6 +1063,18 @@ function draw() {
   // Fever overlay
   if (feverActive) {
     x.fillStyle = "rgba(255, 220, 80, 0.12)";
+    x.fillRect(0, 0, W, H);
+  }
+
+  // Drug overlay (سبز)
+  if (now < drugEffectUntil) {
+    x.fillStyle = "rgba(0,255,150,0.15)";
+    x.fillRect(0, 0, W, H);
+  }
+
+  // Weed overlay (آبی)
+  if (now < weedEffectUntil) {
+    x.fillStyle = "rgba(0,150,255,0.15)";
     x.fillRect(0, 0, W, H);
   }
 
@@ -955,7 +1096,8 @@ function draw() {
     x.fill();
   }
 
-  x.drawImage(img.p, -p.w / 2, -p.h / 2, p.w, p.h);
+  // Draw selected skin
+  x.drawImage(img[currentSkin], -p.w / 2, -p.h / 2, p.w, p.h);
   x.restore();
 
   // ---------------------------
@@ -1041,20 +1183,6 @@ function draw() {
 }
 
 // ---------------------------
-//  PARTICLES
-// ---------------------------
-function updParticles(dt) {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p0 = particles[i];
-    p0.x += p0.vx;
-    p0.y += p0.vy;
-    p0.life -= dt;
-    p0.vy += 0.05;
-    if (p0.life <= 0) particles.splice(i, 1);
-  }
-}
-
-// ---------------------------
 //  LOOP
 // ---------------------------
 (function loop() {
@@ -1065,3 +1193,129 @@ function updParticles(dt) {
 
 applyMode("normal");
 reset();
+
+// ---------------------------
+//  FIREBASE ONLINE SYSTEM
+// ---------------------------
+
+// ✅ Anonymous Login
+auth.signInAnonymously()
+  .then(() => {
+    console.log("✅ Firebase Connected:", auth.currentUser.uid);
+    loadOnlineData();
+  })
+  .catch(err => {
+    console.error("❌ Firebase Error:", err);
+  });
+
+// ---------------------------
+//  SAVE PROFILE ONLINE
+// ---------------------------
+function saveProfileOnline() {
+  if (!auth.currentUser || !profile) return;
+
+  db.collection("profiles").doc(auth.currentUser.uid).set({
+    username: profile.username,
+    avatar: profile.avatar,
+    skin: profile.skin,
+    updated: Date.now()
+  }, { merge: true })
+  .then(() => console.log("✅ Profile Saved Online"))
+  .catch(err => console.error("❌ Profile Save Error:", err));
+}
+
+// ---------------------------
+//  SAVE HIGH SCORE ONLINE
+// ---------------------------
+function saveHighScoreOnline() {
+  if (!auth.currentUser) return;
+
+  db.collection("scores").doc(auth.currentUser.uid).set({
+    score: hs,
+    updated: Date.now(),
+    username: profile ? profile.username : "Guest"
+  }, { merge: true })
+  .then(() => console.log("✅ High Score Saved Online"))
+  .catch(err => console.error("❌ Score Save Error:", err));
+}
+
+// ---------------------------
+//  LOAD ONLINE DATA
+// ---------------------------
+function loadOnlineData() {
+  if (!auth.currentUser) return;
+
+  // Load profile
+  db.collection("profiles").doc(auth.currentUser.uid).get()
+    .then(doc => {
+      if (doc.exists) {
+        const data = doc.data();
+        profile = {
+          username: data.username,
+          avatar: data.avatar,
+          skin: data.skin
+        };
+        localStorage.setItem("profile", JSON.stringify(profile));
+        currentSkin = profile.skin || "p";
+        updateProfileDisplay();
+      }
+    });
+
+  // Load high score
+  db.collection("scores").doc(auth.currentUser.uid).get()
+    .then(doc => {
+      if (doc.exists) {
+        const data = doc.data();
+        hs = data.score || hs;
+        localStorage.setItem("hs", hs);
+      }
+    });
+}
+
+// ---------------------------
+//  LEADERBOARD
+// ---------------------------
+function openLeaderboard() {
+  const lb = document.getElementById("leaderboardMenu");
+  if (!lb) return;
+
+  lb.classList.remove("hidden");
+
+  const list = lb.querySelector(".leaderboard-list");
+  list.innerHTML = "Loading...";
+
+  db.collection("scores")
+    .orderBy("score", "desc")
+    .limit(10)
+    .get()
+    .then(snap => {
+      list.innerHTML = "";
+      snap.forEach(doc => {
+        const d = doc.data();
+        const div = document.createElement("div");
+        div.className = "leaderboard-item";
+        div.textContent = `${d.username || "Player"} — ${d.score}`;
+        list.appendChild(div);
+      });
+    });
+}
+
+function closeLeaderboard() {
+  const lb = document.getElementById("leaderboardMenu");
+  if (!lb) return;
+  lb.classList.add("hidden");
+}
+
+// ---------------------------
+//  PAUSE SYSTEM
+// ---------------------------
+function togglePause() {
+  paused = !paused;
+  if (paused) pauseMenu.classList.remove("hidden");
+  else pauseMenu.classList.add("hidden");
+}
+
+// ---------------------------
+//  END OF FILE
+// ---------------------------
+console.log("✅ EatPizza Online Version Loaded");

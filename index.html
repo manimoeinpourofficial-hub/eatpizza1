@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa">
 <head>
   <meta charset="UTF-8">
-  <title>Eat Pizza · Final Edition · ANFO</title>
+  <title>Eat Pizza · ANFO Edition</title>
+
+  <!-- جلوگیری از زوم -->
   <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
@@ -15,195 +17,195 @@
 </head>
 
 <body>
-  <div id="gameContainer">
-    <canvas id="gameCanvas"></canvas>
 
-    <!-- HUD -->
-    <div id="hudTop">
-      <div class="hud-left">
-        <span id="hudScore">Score: 0</span>
-        <span id="hudHunger">Hunger: 50%</span>
-        <span id="hudHigh">High: 0</span>
-        <span id="hudPC">PC: 0</span>
-      </div>
-      <div class="hud-right">
-        <span id="hudMode">Mode: NORMAL</span>
-        <button id="pauseBtn" class="top-stop-btn">▌▌</button>
-      </div>
+<div id="gameContainer">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hudTop">
+    <div class="hud-left">
+      <span id="hudScore">Score: 0</span>
+      <span id="hudHunger">Hunger: 50%</span>
+      <span id="hudHigh">High: 0</span>
+      <span id="hudPC">PC: 0</span>
     </div>
-
-    <!-- Toast -->
-    <div id="statusToast"></div>
-
-    <!-- LOADING (center, black/yellow) -->
-    <div id="loadingScreen" class="overlay">
-      <div class="menu-box loading-box">
-        <h1 class="logo">🍕 Eat Pizza</h1>
-        <p class="subtitle">Final Edition · ANFO</p>
-        <div class="loading-bar">
-          <div id="loadingFill" class="loading-fill"></div>
-        </div>
-        <div id="loadingPercent" class="loading-percent">0%</div>
-        <p class="loading-hint">Preparing slices & ANFO vibes…</p>
-      </div>
+    <div class="hud-right">
+      <span id="hudMode">Mode: NORMAL</span>
+      <button id="pauseBtn" class="top-stop-btn">▌▌</button>
     </div>
-
-    <!-- START MENU -->
-    <div id="startMenu" class="start-overlay hidden">
-      <div class="start-panel">
-        <div class="start-logo-wrap">
-          <h1 class="start-logo">Eat Pizza</h1>
-          <div class="start-subtitle">ANFO</div>
-        </div>
-
-        <button id="playBtn" class="btn-play-main">Play</button>
-
-        <div class="mode-row">
-          <button class="mode-chip" data-mode="easy">Easy</button>
-          <button class="mode-chip selected" data-mode="normal">Normal</button>
-          <button class="mode-chip" data-mode="hard">Hard</button>
-        </div>
-
-        <div class="menu-grid">
-          <button class="menu-tile" data-action="shop">Shop</button>
-          <button class="menu-tile" data-action="skins">Skins</button>
-          <button class="menu-tile" data-action="daily">Daily</button>
-          <button class="menu-tile" data-action="weekly">Weekly</button>
-          <button class="menu-tile" data-action="leaderboard">Top</button>
-          <button class="menu-tile" data-action="profile">Profile</button>
-          <button class="menu-tile" data-action="voice">Voice</button>
-          <button class="menu-tile" data-action="settings">Settings</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- PAUSE MENU -->
-    <div id="pauseMenu" class="overlay hidden">
-      <div class="menu-box small">
-        <h2>Paused</h2>
-        <button class="menu-btn primary" onclick="togglePause()">Resume</button>
-        <button class="menu-btn" onclick="goToMainMenu()">Main Menu</button>
-
-        <div class="pause-settings">
-          <div class="setting-row">
-            <span>Sound</span>
-            <button class="toggle-chip" onclick="toggleSound()">
-              <span id="soundState">On</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- PROFILE -->
-    <div id="profileMenu" class="modal hidden">
-      <div class="modal-content profile-box">
-        <h2>Profile</h2>
-        <input id="usernameInput" class="input" placeholder="Your name">
-
-        <div class="avatar-row">
-          <div class="avatar" data-id="avatar1"><img src="avatar1.png"></div>
-          <div class="avatar" data-id="avatar2"><img src="avatar2.png"></div>
-          <div class="avatar" data-id="avatar3"><img src="avatar3.png"></div>
-          <div class="avatar" data-id="avatar4"><img src="avatar4.png"></div>
-        </div>
-
-        <div class="modal-actions">
-          <button id="saveProfileBtn" class="menu-btn primary">Save</button>
-          <button id="closeProfileBtn" class="menu-btn">Close</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SKINS -->
-    <div id="skinMenu" class="modal hidden">
-      <div class="modal-content">
-        <h2>Skins</h2>
-        <div class="skin-list"></div>
-        <button class="menu-btn" onclick="closeSkinMenu()">Close</button>
-      </div>
-    </div>
-
-    <!-- SHOP -->
-    <div id="shopMenu" class="modal hidden">
-      <div class="modal-content">
-        <h2>Shop</h2>
-        <div class="shop-list"></div>
-        <button class="menu-btn" onclick="closeShopMenu()">Close</button>
-      </div>
-    </div>
-
-    <!-- DAILY -->
-    <div id="challengeMenu" class="modal hidden">
-      <div class="modal-content">
-        <h2>🔥 Daily Challenges</h2>
-        <div id="challengeList"></div>
-        <button class="menu-btn" onclick="closeChallengeMenu()">Close</button>
-      </div>
-    </div>
-
-    <!-- WEEKLY -->
-    <div id="weeklyMenu" class="modal hidden">
-      <div class="modal-content">
-        <h2>⭐ Weekly Challenges</h2>
-        <div id="weeklyList"></div>
-        <button class="menu-btn" onclick="closeWeeklyMenu()">Close</button>
-      </div>
-    </div>
-
-    <!-- LEADERBOARD -->
-    <div id="leaderboardMenu" class="modal hidden">
-      <div class="modal-content">
-        <h2>🏆 Leaderboard</h2>
-        <div class="leaderboard-list"></div>
-        <button class="menu-btn" onclick="closeLeaderboard()">Close</button>
-      </div>
-    </div>
-
-    <!-- SETTINGS -->
-    <div id="settingsMenu" class="modal hidden">
-      <div class="modal-content">
-        <h2>⚙ Settings</h2>
-
-        <div class="setting-block">
-          <div class="setting-label">Control Type</div>
-          <div class="setting-options">
-            <button class="setting-chip" data-control="touch">Touch</button>
-            <button class="setting-chip" data-control="tilt">Tilt</button>
-            <button class="setting-chip" data-control="both">Touch + Tilt</button>
-          </div>
-          <p class="setting-help">
-            Tilt: Move phone left/right to control player.
-          </p>
-        </div>
-
-        <div class="setting-block">
-          <div class="setting-label">Voice</div>
-          <p class="setting-help">
-            Voice reactions coming soon…
-          </p>
-        </div>
-
-        <button class="menu-btn" onclick="closeSettingsMenu()">Close</button>
-      </div>
-    </div>
-
   </div>
 
-  <!-- Firebase init -->
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyB8PV0S43tJdZYAgwSsXq5fpBrcukczgec",
-      authDomain: "eat-pizza-b1651.firebaseapp.com",
-      projectId: "eat-pizza-b1651",
-      storageBucket: "eat-pizza-b1651.firebasestorage.app",
-      messagingSenderId: "691132791942",
-      appId: "1:691132791942:web:90070f3e73940e6916e507",
-      measurementId: "G-GKJ6YS8G4E"
-    };
-    firebase.initializeApp(firebaseConfig);
-  </script>
+  <!-- Toast -->
+  <div id="statusToast"></div>
 
-  <script src="eat-pizza-final-edition.js"></script>
+  <!-- LOADING -->
+  <div id="loadingScreen">
+    <canvas id="loadingCanvas"></canvas>
+
+    <div class="loading-box">
+      <h1 class="logo">🍕 Eat Pizza</h1>
+      <p class="subtitle">ANFO Final Edition</p>
+
+      <div class="loading-bar">
+        <div id="loadingFill" class="loading-fill"></div>
+      </div>
+
+      <div id="loadingPercent" class="loading-percent">0%</div>
+      <p class="loading-hint">Loading assets…</p>
+    </div>
+  </div>
+
+  <!-- START MENU -->
+  <div id="startMenu" class="start-overlay hidden">
+    <div class="start-panel">
+      <h1 class="start-logo">Eat Pizza</h1>
+      <div class="start-subtitle">ANFO</div>
+
+      <button id="playBtn" class="btn-play-main">Play</button>
+
+      <div class="mode-row">
+        <button class="mode-chip" data-mode="easy">Easy</button>
+        <button class="mode-chip selected" data-mode="normal">Normal</button>
+        <button class="mode-chip" data-mode="hard">Hard</button>
+      </div>
+
+      <div class="menu-grid">
+        <button class="menu-tile" data-action="shop">Shop</button>
+        <button class="menu-tile" data-action="skins">Skins</button>
+        <button class="menu-tile" data-action="daily">Daily</button>
+        <button class="menu-tile" data-action="weekly">Weekly</button>
+        <button class="menu-tile" data-action="leaderboard">Top</button>
+        <button class="menu-tile" data-action="profile">Profile</button>
+        <button class="menu-tile" data-action="voice">Voice</button>
+        <button class="menu-tile" data-action="settings">Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAUSE MENU -->
+  <div id="pauseMenu" class="overlay hidden">
+    <div class="menu-box small">
+      <h2>Paused</h2>
+      <button class="menu-btn primary" onclick="togglePause()">Resume</button>
+      <button class="menu-btn" onclick="goToMainMenu()">Main Menu</button>
+
+      <div class="pause-settings">
+        <div class="setting-row">
+          <span>Sound</span>
+          <button class="toggle-chip" onclick="toggleSound()">
+            <span id="soundState">On</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PROFILE -->
+  <div id="profileMenu" class="modal hidden">
+    <div class="modal-content profile-box">
+      <h2>Profile</h2>
+
+      <input id="usernameInput" class="input" placeholder="Your name">
+
+      <div class="avatar-row">
+        <div class="avatar" data-id="avatar1"><img src="avatar1.png"></div>
+        <div class="avatar" data-id="avatar2"><img src="avatar2.png"></div>
+        <div class="avatar" data-id="avatar3"><img src="avatar3.png"></div>
+        <div class="avatar" data-id="avatar4"><img src="avatar4.png"></div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="saveProfileBtn" class="menu-btn primary">Save</button>
+        <button id="closeProfileBtn" class="menu-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SKINS -->
+  <div id="skinMenu" class="modal hidden">
+    <div class="modal-content">
+      <h2>Skins</h2>
+      <div class="skin-list"></div>
+      <button class="menu-btn" onclick="closeSkinMenu()">Close</button>
+    </div>
+  </div>
+
+  <!-- SHOP -->
+  <div id="shopMenu" class="modal hidden">
+    <div class="modal-content">
+      <h2>Shop</h2>
+      <div class="shop-list"></div>
+      <button class="menu-btn" onclick="closeShopMenu()">Close</button>
+    </div>
+  </div>
+
+  <!-- DAILY -->
+  <div id="challengeMenu" class="modal hidden">
+    <div class="modal-content">
+      <h2>🔥 Daily Challenges</h2>
+      <div id="challengeList"></div>
+      <button class="menu-btn" onclick="closeChallengeMenu()">Close</button>
+    </div>
+  </div>
+
+  <!-- WEEKLY -->
+  <div id="weeklyMenu" class="modal hidden">
+    <div class="modal-content">
+      <h2>⭐ Weekly Challenges</h2>
+      <div id="weeklyList"></div>
+      <button class="menu-btn" onclick="closeWeeklyMenu()">Close</button>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="leaderboardMenu" class="modal hidden">
+    <div class="modal-content">
+      <h2>🏆 Leaderboard</h2>
+      <div class="leaderboard-list"></div>
+      <button class="menu-btn" onclick="closeLeaderboard()">Close</button>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="settingsMenu" class="modal hidden">
+    <div class="modal-content">
+      <h2>⚙ Settings</h2>
+
+      <div class="setting-block">
+        <div class="setting-label">Control Type</div>
+        <div class="setting-options">
+          <button class="setting-chip" data-control="touch">Touch</button>
+          <button class="setting-chip" data-control="tilt">Tilt</button>
+          <button class="setting-chip" data-control="both">Both</button>
+        </div>
+      </div>
+
+      <div class="setting-block">
+        <div class="setting-label">Voice</div>
+        <p class="setting-help">Coming soon…</p>
+      </div>
+
+      <button class="menu-btn" onclick="closeSettingsMenu()">Close</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Firebase init -->
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyB8PV0S43tJdZYAgwSsXq5fpBrcukczgec",
+    authDomain: "eat-pizza-b1651.firebaseapp.com",
+    projectId: "eat-pizza-b1651",
+    storageBucket: "eat-pizza-b1651.firebasestorage.app",
+    messagingSenderId: "691132791942",
+    appId: "1:691132791942:web:90070f3e73940e6916e507",
+    measurementId: "G-GKJ6YS8G4E"
+  };
+  firebase.initializeApp(firebaseConfig);
+</script>
+
+<script src="eat-pizza-final-edition.js"></script>
+
 </body>
 </html>

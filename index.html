@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Eat Pizza Final Edition</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <link rel="stylesheet" href="style.css">
 
-  <!-- Firebase compat (مثل نسخهٔ قبل خودت) -->
+  <!-- Firebase compat -->
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
@@ -39,18 +40,19 @@
 
       <!-- LOADING -->
       <div id="loadingScreen" class="overlay">
-        <div class="menu-box">
+        <div class="menu-box loading-box">
           <h1 class="logo">🍕 Eat Pizza</h1>
           <p class="subtitle">Final Edition · ANFO</p>
           <div class="loading-bar">
             <div id="loadingFill" class="loading-fill"></div>
           </div>
           <div id="loadingPercent" class="loading-percent">0%</div>
+          <p class="loading-hint">Preparing slices, sounds and ANFO magic…</p>
         </div>
       </div>
 
       <!-- START MENU -->
-      <div id="startMenu" class="overlay hidden">
+      <div id="startMenu" class="overlay hidden" style="pointer-events:auto;">
         <div class="menu-box">
           <h1 class="logo">🍕 Eat Pizza</h1>
           <p class="subtitle">Fast · Cute · Dangerous</p>
@@ -202,7 +204,7 @@
   </div>
 
   <script>
-    // Firebase init – از کانفیگ خودت
+    // Firebase init – config خودت
     const firebaseConfig = {
       apiKey: "AIzaSyB8PV0S43tJdZYAgwSsXq5fpBrcukczgec",
       authDomain: "eat-pizza-b1651.firebaseapp.com",

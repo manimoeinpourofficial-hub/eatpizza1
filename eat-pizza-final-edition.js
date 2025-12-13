@@ -40,13 +40,17 @@ let godMode = false, godModeUntil = 0;
 let feverActive = false, feverUntil = 0;
 let drugEffectUntil = 0, weedEffectUntil = 0;
 
+// NEW: Slow/Fast modes
+let ultraSlowUntil = 0;
+let ultraFastUntil = 0;
+
 // Voice cheat / Ultra Mode
 let voiceCheatEnabled = false;
 let ultraModeUntil = 0;
 let voiceCooldownUntil = 0;
 let recognition = null;
 
-// Skins
+// SKINS
 let currentSkin = localStorage.getItem("skin") || "p";
 const skins = {
   p:  { name: "Default",        unlocked: true,                   requireScore: 0,    price: 0,   id:"p"  },
@@ -63,11 +67,11 @@ let pizzaRate = 1;
 let drugPower = 15;
 let weedPower = 10;
 
+// Dynamic spawn pressure
+let spawnPressure = 1;
+
 // DOM refs
 const pauseMenu = document.getElementById("pauseMenu");
-const pauseTitle = document.getElementById("pauseTitle");
-const pauseMain = document.getElementById("pauseMain");
-const pauseSettings = document.getElementById("pauseSettings");
 const soundStateSpan = document.getElementById("soundState");
 const pauseBtn = document.getElementById("pauseBtn");
 
@@ -78,7 +82,7 @@ const hudHunger = document.getElementById("hudHunger");
 const hudMiss = document.getElementById("hudMiss");
 const hudSpeed = document.getElementById("hudSpeed");
 const hudMode = document.getElementById("hudMode");
-const hudPC = document.getElementById("hudPC"); // NEW: PC HUD
+const hudPC = document.getElementById("hudPC");
 
 // START MENU refs
 const startMenu = document.getElementById("startMenu");
@@ -115,7 +119,6 @@ const weeklyList = weeklyMenu ? weeklyMenu.querySelector("#weeklyList") : null;
 const leaderboardMenu = document.getElementById("leaderboardMenu");
 
 // VOICE CHEAT TOGGLE
-const voiceCheatBtn = document.getElementById("voiceCheatBtn");
 const voiceCheatStateSpan = document.getElementById("voiceCheatState");
 
 // STATUS / TOAST
@@ -156,15 +159,21 @@ const bg = makeAudio("background.mp3");
 bg.loop = true;
 bg.volume = 0.3;
 
-let cool = {};
+// جلوگیری از قاطی شدن صداها
+let audioLock = false;
 function playSound(name) {
   if (!start || !soundOn) return;
-  const now = Date.now();
-  if (now - (cool[name] || 0) < 120) return;
-  cool[name] = now;
+
+  // shit و background اجازه دارند هر زمان
+  if (name !== "shit" && name !== "background") {
+    if (audioLock) return;
+    audioLock = true;
+    setTimeout(() => audioLock = false, 150);
+  }
 
   const s = sounds[name];
   if (!s) return;
+
   const base = Array.isArray(s) ? s[(Math.random() * s.length) | 0] : s;
   const a = base.cloneNode();
   a.currentTime = 0;
@@ -177,6 +186,13 @@ function playHitSound() {
   const a = base.cloneNode();
   a.currentTime = 0;
   a.play().catch(() => {});
+}
+
+function applyGlobalPlaybackRate(rate) {
+  bg.playbackRate = rate;
+  Object.values(sounds).flat().forEach(s => {
+    if (s instanceof Audio) s.playbackRate = rate;
+  });
 }
 
 // ---------------------------
@@ -209,8 +225,8 @@ const img = {
   p: I("PIZZA-KHOOR.png"),
   p1: I("skin1.png"),
   p2: I("skin2.png"),
-  p3: I("skin3.png"), // new optional
-  p4: I("skin4.png"), // new optional
+  p3: I("skin3.png"),
+  p4: I("skin4.png"),
   r: I("pizza1.png"),
   g: I("DRUG.png"),
   b: I("weed.webp"),
@@ -286,31 +302,24 @@ startGameBtns.forEach(btn => {
     applyMode(mode);
     if (startMenu) startMenu.classList.add("hidden");
     start = true;
-    if (soundOn) bg.play();
+    go = false;
     reset();
+    if (soundOn) bg.play().catch(() => {});
   });
 });
 
-document.querySelectorAll(".menu-btn").forEach(btn => {
+document.querySelectorAll(".menu-btn, .menu-icon-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const act = btn.dataset.action;
-    if (act === "login") {
-      openProfileMenu();
-    } else if (act === "skins") {
-      openSkinMenu();
-    } else if (act === "leaderboard") {
-      openLeaderboard();
-    } else if (act === "settings") {
-      // reserved
-    } else if (act === "shop") {
-      openShopMenu();
-    } else if (act === "daily") {
-      openChallengeMenu();
-    } else if (act === "weekly") {
-      openWeeklyMenu();
-    } else if (act === "voice") {
-      toggleVoiceCheat();
-    }
+    if (!act) return;
+    if (act === "login") openProfileMenu();
+    else if (act === "skins") openSkinMenu();
+    else if (act === "leaderboard") openLeaderboard();
+    else if (act === "settings") { /* reserved */ }
+    else if (act === "shop") openShopMenu();
+    else if (act === "daily") openChallengeMenu();
+    else if (act === "weekly") openWeeklyMenu();
+    else if (act === "voice") toggleVoiceCheat();
   });
 });
 
@@ -375,13 +384,12 @@ function updateProfileDisplay() {
 }
 
 // ---------------------------
-//  SKIN SYSTEM (قابل آزادسازی)
+//  SKIN SYSTEM
 // ---------------------------
 function updateSkinUnlockedState() {
   skins.p.unlocked = true;
   skins.p1.unlocked = hs >= skins.p1.requireScore || skins.p1.price === 0;
   skins.p2.unlocked = hs >= skins.p2.requireScore || skins.p2.price === 0;
-  // p3, p4 فقط از طریق Shop باز می‌شوند (با pc)
 }
 
 function updateSkinMenu() {
@@ -409,12 +417,8 @@ function updateSkinMenu() {
     label.textContent = s.name + extra;
     label.className = "skin-label";
 
-    if (!s.unlocked) {
-      div.classList.add("locked");
-    }
-    if (currentSkin === id) {
-      div.classList.add("selected");
-    }
+    if (!s.unlocked) div.classList.add("locked");
+    if (currentSkin === id) div.classList.add("selected");
 
     div.appendChild(imgEl);
     div.appendChild(label);
@@ -453,7 +457,7 @@ function closeSkinMenu() {
 }
 
 // ---------------------------
-//  SHOP SYSTEM (با PC)
+//  SHOP SYSTEM
 // ---------------------------
 function openShopMenu() {
   if (!shopMenu || !shopList) return;
@@ -472,7 +476,7 @@ function updateShopUI() {
 
   Object.keys(skins).forEach(id => {
     const s = skins[id];
-    if (id === "p") return; // default در shop لازم نیست
+    if (id === "p") return;
 
     const div = document.createElement("div");
     div.className = "shop-item";
@@ -481,7 +485,9 @@ function updateShopUI() {
     left.className = "shop-item-info";
     left.innerHTML = `
       <div class="shop-item-title">${s.name}</div>
-      <div class="shop-item-sub">${s.unlocked ? "Unlocked" : (s.price ? s.price + " PC" : "Unlock with score")}</div>
+      <div class="shop-item-sub">
+        ${s.unlocked ? "Unlocked" : (s.price ? s.price + " PC" : "Unlock by score")}
+      </div>
     `;
 
     const btn = document.createElement("button");
@@ -511,7 +517,6 @@ function updateShopUI() {
         }
         updateShopUI();
         updateSkinMenu();
-        return;
       } else {
         if (pc < s.price) {
           showToast("PC کافی نداری!");
@@ -520,7 +525,6 @@ function updateShopUI() {
         pc -= s.price;
         localStorage.setItem("pc", pc);
         updateHUDPC();
-
         s.unlocked = true;
         currentSkin = id;
         localStorage.setItem("skin", currentSkin);
@@ -549,13 +553,17 @@ function move(mx) {
   p.x = Math.max(0, Math.min(mx - p.w / 2, W - p.w));
 }
 
-c.addEventListener("mousemove", e => {
+// canvas فقط نمایش، نه input
+c.style.pointerEvents = "none";
+
+addEventListener("mousemove", e => {
   const rect = c.getBoundingClientRect();
   move(e.clientX - rect.left);
 });
-c.addEventListener("touchmove", e => {
+addEventListener("touchmove", e => {
   const rect = c.getBoundingClientRect();
-  move(e.touches[0].clientX - rect.left);
+  const t = e.touches[0];
+  move(t.clientX - rect.left);
 }, { passive: true });
 
 let lastTapTime = 0;
@@ -573,7 +581,7 @@ function registerInputForCheat() {
   }
 }
 
-// SlowMo cheat buffer (برای سوایپ + چیزهای قدیمی)
+// SlowMo cheat buffer (keyboard)
 let cheatBuffer = "";
 
 function activateSlowMo() {
@@ -581,7 +589,7 @@ function activateSlowMo() {
   spawnParticles(p.x + p.w / 2, p.y, "#88ddff", 40);
 }
 
-// God Mode cheat (ANFO)
+// God Mode cheat
 function activateGodMode(duration = 8000) {
   godMode = true;
   godModeUntil = Date.now() + duration;
@@ -622,15 +630,16 @@ function addSwipeDir(dir) {
   }
 }
 
-c.addEventListener("touchstart", e => {
-  const t = e.touches[0];
+addEventListener("touchstart", e => {
   const rect = c.getBoundingClientRect();
+  const t = e.touches[0];
   const x0 = t.clientX - rect.left;
   const y0 = t.clientY - rect.top;
 
   if (!start) {
     start = true;
-    if (soundOn) bg.play();
+    go = false;
+    if (soundOn) bg.play().catch(() => {});
     if (startMenu) startMenu.classList.add("hidden");
     return;
   }
@@ -649,7 +658,7 @@ c.addEventListener("touchstart", e => {
   touchStartY = y0;
 }, { passive: true });
 
-c.addEventListener("touchend", e => {
+addEventListener("touchend", e => {
   if (!touchActive) return;
   const rect = c.getBoundingClientRect();
   const changed = e.changedTouches[0];
@@ -684,14 +693,13 @@ addEventListener("keydown", e => {
 
     if (!start) {
       start = true;
-      if (soundOn) bg.play();
+      if (soundOn) bg.play().catch(() => {});
       if (startMenu) startMenu.classList.add("hidden");
     } else if (go) {
       reset();
     } else {
       shootSingle();
     }
-
     registerInputForCheat();
   }
 
@@ -772,9 +780,7 @@ function applyMode(mode) {
     pizzaRate = 1.3;
     drugPower = 25;
     weedPower = 5;
-  }
-
-  else if (mode === "normal") {
+  } else if (mode === "normal") {
     gameSpeed = 1.0;
     prob = 0.25;
     zigzagIntensity = 1.0;
@@ -782,9 +788,7 @@ function applyMode(mode) {
     pizzaRate = 1.0;
     drugPower = 15;
     weedPower = 10;
-  }
-
-  else if (mode === "hard") {
+  } else if (mode === "hard") {
     gameSpeed = 1.4;
     prob = 0.35;
     zigzagIntensity = 1.8;
@@ -838,6 +842,8 @@ function reset() {
   drugEffectUntil = 0;
   weedEffectUntil = 0;
 
+  ultraSlowUntil = 0;
+  ultraFastUntil = 0;
   ultraModeUntil = 0;
 
   applyMode(currentMode);
@@ -849,6 +855,8 @@ function reset() {
   nextBlue = now + 3000;
   nextBuff = now + 4000;
   nextFever = now + 5000;
+
+  applyGlobalPlaybackRate(1);
 }
 
 // ---------------------------
@@ -876,10 +884,10 @@ function breakCombo() {
 }
 
 // ---------------------------
-//  ZIGZAG MOVEMENT (فقط روی Hard)
+//  ZIGZAG MOVEMENT (فقط Hard)
 // ---------------------------
 function applyZigzag(o, sp) {
-  if (currentMode !== "hard") return; // فقط در Hard فعال
+  if (currentMode !== "hard") return;
   if (!o.zigzag) return;
 
   if (o.baseX == null) o.baseX = o.x;
@@ -908,11 +916,8 @@ function activateFever() {
   gameSpeed *= 1.25;
   comboMultiplier *= 2;
 
-  bg.playbackRate = 1.3;
-
   spawnParticles(p.x + p.w / 2, p.y, "#ffcc00", 40);
 
-  // NEW: fever هم PC می‌دهد
   pc += 10;
   localStorage.setItem("pc", pc);
   updateHUDPC();
@@ -925,7 +930,6 @@ function updateFever(now) {
     feverActive = false;
     gameSpeed /= 1.25;
     comboMultiplier = 1;
-    bg.playbackRate = 1;
   }
 }
 
@@ -971,7 +975,6 @@ function limitObjects() {
 // ---------------------------
 //  DAILY / WEEKLY CHALLENGES
 // ---------------------------
-
 const dailyKey = "ep_daily_state_v1";
 const weeklyKey = "ep_weekly_state_v1";
 
@@ -989,6 +992,21 @@ const weeklyTemplate = [
   { id: "w2", text: "Collect 150 pizzas", type: "pizzas", target: 150, rewardPC: 40 },
   { id: "w3", text: "Play 20 rounds", type: "rounds", target: 20, rewardPC: 60 }
 ];
+
+function getDayStart(t) {
+  const d = new Date(t);
+  d.setHours(0,0,0,0);
+  return d.getTime();
+}
+
+function getWeekStart(t) {
+  const d = new Date(t);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0,0,0,0);
+  return d.getTime();
+}
 
 function resetDailyState() {
   dailyState = {
@@ -1022,30 +1040,10 @@ function resetWeeklyState() {
   localStorage.setItem(weeklyKey, JSON.stringify(weeklyState));
 }
 
-function getDayStart(t) {
-  const d = new Date(t);
-  d.setHours(0,0,0,0);
-  return d.getTime();
-}
-
-function getWeekStart(t) {
-  const d = new Date(t);
-  const day = d.getDay(); // 0-6
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0,0,0,0);
-  return d.getTime();
-}
-
-// initial daily/weekly load
 (function initChallenges() {
   const now = Date.now();
-  if (!dailyState || dailyState.ts !== getDayStart(now)) {
-    resetDailyState();
-  }
-  if (!weeklyState || weeklyState.ts !== getWeekStart(now)) {
-    resetWeeklyState();
-  }
+  if (!dailyState || dailyState.ts !== getDayStart(now)) resetDailyState();
+  if (!weeklyState || weeklyState.ts !== getWeekStart(now)) resetWeeklyState();
 })();
 
 function updateChallengesOnPizzaCollect() {
@@ -1083,24 +1081,22 @@ function updateChallengesOnPizzaCollect() {
 
 function updateChallengesOnScore(scoreNow) {
   if (!dailyState || !weeklyState) return;
+
   dailyState.data.forEach(ch => {
-    if (ch.type === "score" && !ch.done) {
-      if (scoreNow >= ch.target) {
-        ch.done = true;
-        ch.progress = ch.target;
-        pc += ch.rewardPC;
-        showToast("Daily Complete: +" + ch.rewardPC + " PC");
-      }
+    if (ch.type === "score" && !ch.done && scoreNow >= ch.target) {
+      ch.done = true;
+      ch.progress = ch.target;
+      pc += ch.rewardPC;
+      showToast("Daily Complete: +" + ch.rewardPC + " PC");
     }
   });
+
   weeklyState.data.forEach(ch => {
-    if (ch.type === "score" && !ch.done) {
-      if (scoreNow >= ch.target) {
-        ch.done = true;
-        ch.progress = ch.target;
-        pc += ch.rewardPC;
-        showToast("Weekly Complete: +" + ch.rewardPC + " PC");
-      }
+    if (ch.type === "score" && !ch.done && scoreNow >= ch.target) {
+      ch.done = true;
+      ch.progress = ch.target;
+      pc += ch.rewardPC;
+      showToast("Weekly Complete: +" + ch.rewardPC + " PC");
     }
   });
 
@@ -1187,7 +1183,99 @@ function updateWeeklyUI() {
 }
 
 // ---------------------------
-//  BUFFS (speed + fever)
+//  ULTRA SLOW / FAST
+// ---------------------------
+function activateUltraSlow() {
+  ultraSlowUntil = Date.now() + 10000;
+  ultraFastUntil = 0; // if any fast, cancel it
+  spawnParticles(p.x + p.w/2, p.y, "#88ccff", 40);
+}
+
+function activateUltraFast() {
+  ultraFastUntil = Date.now() + 10000;
+  ultraSlowUntil = 0; // cancel slow if any
+  spawnParticles(p.x + p.w/2, p.y, "#ffcc00", 40);
+}
+
+// ---------------------------
+//  ULTRA MODE (Voice Cheat)
+// ---------------------------
+function toggleVoiceCheat() {
+  voiceCheatEnabled = !voiceCheatEnabled;
+  if (voiceCheatStateSpan) {
+    voiceCheatStateSpan.textContent = voiceCheatEnabled ? "On" : "Off";
+  }
+  if (voiceCheatEnabled) {
+    startVoiceRecognition();
+    showToast("Voice Cheat: Say 'ANFO Ultra Mode'");
+  } else {
+    stopVoiceRecognition();
+  }
+}
+
+function startVoiceRecognition() {
+  if (!("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
+    showToast("Voice not supported on this device");
+    voiceCheatEnabled = false;
+    if (voiceCheatStateSpan) voiceCheatStateSpan.textContent = "Off";
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = "en-US";
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.onresult = e => {
+    const text = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
+    handleVoiceCommand(text);
+  };
+  recognition.onend = () => {
+    if (voiceCheatEnabled) recognition.start();
+  };
+  recognition.start();
+}
+
+function stopVoiceRecognition() {
+  if (recognition) recognition.stop();
+}
+
+function handleVoiceCommand(text) {
+  const now = Date.now();
+  if (!voiceCheatEnabled) return;
+  if (now < voiceCooldownUntil) return;
+  if (text.includes("anfo ultra mode")) {
+    activateUltraMode();
+    voiceCooldownUntil = now + 3 * 60 * 1000;
+  }
+}
+
+function activateUltraMode() {
+  const now = Date.now();
+  ultraModeUntil = now + 50000;
+  spawnParticles(p.x + p.w / 2, p.y, "#ff00ff", 50);
+  showToast("ANFO ULTRA MODE – 50s");
+}
+
+function isPulledByUltra(r, effSp) {
+  const now = Date.now();
+  if (ultraModeUntil <= now) return false;
+  const cx = p.x + p.w / 2;
+  const cy = p.y + p.h / 2;
+  const rx = r.x + r.w / 2;
+  const ry = r.y + r.h / 2;
+  const dx = cx - rx;
+  const dy = cy - ry;
+  const dist = Math.hypot(dx, dy);
+  if (dist > H * 0.6) return false;
+
+  const pull = 0.25 * effSp;
+  r.x += (dx / (dist || 1)) * pull;
+  r.y += (dy / (dist || 1)) * pull;
+  return coll(p, r);
+}
+
+// ---------------------------
+//  UPDATE LOOP
 // ---------------------------
 function upd() {
   if (!start || go || paused) return;
@@ -1196,14 +1284,27 @@ function upd() {
 
   updateGodMode(now);
   updateFever(now);
-  updateUltraMode(now);
+
+  // Dynamic spawn pressure based on score
+  spawnPressure = 1 + Math.min(score / 1500, 2); // تا حدود 3x
 
   let sp = gameSpeed;
-  let slowFactor = now < slowMoUntil ? 0.5 : 1;
+  let effSlowFactor = 1;
 
-  if (now < speedBoostUntil) sp *= 1.3;
+  if (now < slowMoUntil) effSlowFactor *= 0.7;
+  if (now < ultraSlowUntil) effSlowFactor *= 0.4;
+  if (now < ultraFastUntil) sp *= 1.5;
 
-  let effSp = sp * slowFactor;
+  // صداها بر اساس Slow/Fast
+  if (now < ultraSlowUntil) {
+    applyGlobalPlaybackRate(0.6);
+  } else if (now < ultraFastUntil) {
+    applyGlobalPlaybackRate(1.4);
+  } else {
+    applyGlobalPlaybackRate(1);
+  }
+
+  let effSp = sp * effSlowFactor;
   const dt = 16;
 
   limitObjects();
@@ -1211,14 +1312,14 @@ function upd() {
   // SPAWN OBJECTS
   if (now > nextRed) {
     reds.push(spawn("red", item, item));
-    nextRed = now + (1700 / effSp) / pizzaRate;
+    nextRed = now + (1600 / effSp) / spawnPressure;
   }
 
   if (now > nextObs) {
-    if (Math.random() < 0.7 * obstacleRate) {
+    if (Math.random() < 0.5 * spawnPressure) {
       obs.push(spawn("obs", item * 0.8, item * 0.8));
     }
-    nextObs = now + (4000 / effSp) / obstacleRate;
+    nextObs = now + (3800 / effSp) / spawnPressure;
   }
 
   if (now > nextGreen && Math.random() < 0.2) {
@@ -1247,7 +1348,9 @@ function upd() {
     r.y += 1.3 * effSp;
     applyZigzag(r, effSp);
 
-    if (coll(p, r) || isPulledByUltra(r, effSp)) {
+    const collected = coll(p, r) || isPulledByUltra(r, effSp);
+
+    if (collected) {
       handleComboPizzaTake();
 
       let base = 5;
@@ -1257,7 +1360,6 @@ function upd() {
 
       score += Math.round(base * comboMultiplier);
 
-      // NEW: پیتزا → PC
       pc += 1;
       localStorage.setItem("pc", pc);
       updateHUDPC();
@@ -1349,25 +1451,22 @@ function upd() {
     }
   }
 
-  // BUFFS (speed + fever)
+  // BUFFS (speed + pizza44)
   for (let i = buffs.length - 1; i >= 0; i--) {
     const bf = buffs[i];
     bf.y += 1.3 * effSp;
     applyZigzag(bf, effSp);
 
     if (coll(p, bf)) {
-
       if (bf.tType === "speed") {
-        speedBoostUntil = now + 10000;
+        activateUltraFast();
         if (miss > 0) miss--;
-        spawnParticles(bf.x + bf.w / 2, bf.y + bf.h / 2, "yellow", 10);
       }
-
       if (bf.tType === "fever") {
-        activateFever();
-        spawnParticles(bf.x + bf.w / 2, bf.y + bf.h / 2, "#ffcc00", 20);
+        activateUltraSlow();
       }
 
+      spawnParticles(bf.x + bf.w / 2, bf.y + bf.h / 2, "#ffcc00", 20);
       buffs.splice(i, 1);
 
     } else if (bf.y > H) {
@@ -1415,87 +1514,6 @@ function upd() {
 }
 
 // ---------------------------
-//  ULTRA MODE (Voice Cheat)
-// ---------------------------
-function toggleVoiceCheat() {
-  voiceCheatEnabled = !voiceCheatEnabled;
-  if (voiceCheatStateSpan) {
-    voiceCheatStateSpan.textContent = voiceCheatEnabled ? "On" : "Off";
-  }
-  if (voiceCheatEnabled) {
-    startVoiceRecognition();
-    showToast("Voice Cheat: Say 'ANFO Ultra Mode'");
-  } else {
-    stopVoiceRecognition();
-  }
-}
-
-function startVoiceRecognition() {
-  if (!("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
-    showToast("Voice not supported on this device");
-    voiceCheatEnabled = false;
-    if (voiceCheatStateSpan) voiceCheatStateSpan.textContent = "Off";
-    return;
-  }
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  recognition = new SR();
-  recognition.lang = "en-US";
-  recognition.continuous = true;
-  recognition.interimResults = false;
-  recognition.onresult = e => {
-    const text = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
-    handleVoiceCommand(text);
-  };
-  recognition.onend = () => {
-    if (voiceCheatEnabled) recognition.start();
-  };
-  recognition.start();
-}
-
-function stopVoiceRecognition() {
-  if (recognition) recognition.stop();
-}
-
-function handleVoiceCommand(text) {
-  const now = Date.now();
-  if (!voiceCheatEnabled) return;
-  if (now < voiceCooldownUntil) return;
-  if (text.includes("anfo ultra mode")) {
-    activateUltraMode();
-    voiceCooldownUntil = now + 3 * 60 * 1000; // 3 دقیقه cooldown
-  }
-}
-
-function activateUltraMode() {
-  const now = Date.now();
-  ultraModeUntil = now + 50000; // 50 ثانیه
-  spawnParticles(p.x + p.w / 2, p.y, "#ff00ff", 50);
-  showToast("ANFO ULTRA MODE – 50s");
-}
-
-function updateUltraMode(now) {
-  if (ultraModeUntil <= now) return;
-}
-
-function isPulledByUltra(r, effSp) {
-  const now = Date.now();
-  if (ultraModeUntil <= now) return false;
-  const cx = p.x + p.w / 2;
-  const cy = p.y + p.h / 2;
-  const rx = r.x + r.w / 2;
-  const ry = r.y + r.h / 2;
-  const dx = cx - rx;
-  const dy = cy - ry;
-  const dist = Math.hypot(dx, dy);
-  if (dist > H * 0.6) return false;
-
-  const pull = 0.25 * effSp;
-  r.x += (dx / (dist || 1)) * pull;
-  r.y += (dy / (dist || 1)) * pull;
-  return coll(p, r);
-}
-
-// ---------------------------
 //  DRAW
 // ---------------------------
 function draw() {
@@ -1503,13 +1521,17 @@ function draw() {
   x.clearRect(0, 0, W, H);
 
   const now = Date.now();
-  const inSlowMo = now < slowMoUntil;
+  const inSlowMo = now < slowMoUntil || now < ultraSlowUntil;
 
-  // BACKGROUND
+  // BACKGROUND: سفید + pizzaback با اوپسیتی کم
   if (img.bg && img.bg.complete) {
+    x.fillStyle = "#ffffff";
+    x.fillRect(0, 0, W, H);
+    x.globalAlpha = 0.22;
     x.drawImage(img.bg, 0, 0, W, H);
+    x.globalAlpha = 1;
   } else {
-    x.fillStyle = "#111827";
+    x.fillStyle = "#ffffff";
     x.fillRect(0, 0, W, H);
   }
 
@@ -1525,19 +1547,28 @@ function draw() {
     return;
   }
 
-  // SlowMo overlay
-  if (inSlowMo) {
+  // Slow overlay
+  if (now < ultraSlowUntil) {
+    x.fillStyle = "rgba(120,170,255,0.18)";
+    x.fillRect(0, 0, W, H);
+  } else if (inSlowMo) {
     x.fillStyle = "rgba(100,150,255,0.08)";
     x.fillRect(0, 0, W, H);
   }
 
-  // Fever overlay
-  if (feverActive) {
-    x.fillStyle = "rgba(255, 220, 80, 0.12)";
+  // Fast overlay
+  if (now < ultraFastUntil) {
+    x.fillStyle = "rgba(255,220,130,0.16)";
     x.fillRect(0, 0, W, H);
   }
 
-  // NOTE: Drug/Weed overlay removed in Final Edition
+  // Fever overlay (کم)
+  if (feverActive) {
+    x.fillStyle = "rgba(255, 220, 80, 0.1)";
+    x.fillRect(0, 0, W, H);
+  }
+
+  // NOTE: Drug/Weed overlay حذف شده
 
   // PLAYER
   x.save();
@@ -1589,22 +1620,22 @@ function draw() {
   if (comboText && now < comboTextUntil) {
     x.textAlign = "center";
     x.font = "24px Arial";
-    x.fillStyle = "#ffdd33";
+    x.fillStyle = "#ff8800";
     x.fillText(comboText, W / 2, 70);
   }
 
-  if (inSlowMo) {
+  if (now < slowMoUntil || now < ultraSlowUntil) {
     x.textAlign = "center";
     x.font = "18px Arial";
     x.fillStyle = "#88ddff";
-    x.fillText("ANFO SLOW-MO", W / 2, 100);
+    x.fillText("SLOW MODE", W / 2, 100);
   }
 
-  if (feverActive) {
+  if (now < ultraFastUntil) {
     x.textAlign = "center";
-    x.font = "22px Arial";
-    x.fillStyle = "#ffbb33";
-    x.fillText("FEVER MODE!", W / 2, 130);
+    x.font = "18px Arial";
+    x.fillStyle = "#ffcc33";
+    x.fillText("SPEED BOOST", W / 2, 130);
   }
 
   if (ultraModeUntil > now) {
@@ -1650,10 +1681,7 @@ reset();
 //  FIREBASE ONLINE SYSTEM
 // ---------------------------
 
-// ⚠ اینجا فرض می‌کنیم firebase و auth/db در index.html اینیت شدن
-// مثل کد قبلی خودت.
-// اگر از compat استفاده می‌کنی، همان موجودات global استفاده می‌شوند.
-
+// فرض: firebase، auth و db در index.html تعریف شده‌اند
 auth.signInAnonymously()
   .then(() => {
     console.log("✅ Firebase Connected:", auth.currentUser.uid);
@@ -1663,7 +1691,6 @@ auth.signInAnonymously()
     console.error("❌ Firebase Error:", err);
   });
 
-// SAVE PROFILE ONLINE
 function saveProfileOnline() {
   if (!auth.currentUser || !profile) return;
 
@@ -1678,7 +1705,6 @@ function saveProfileOnline() {
   .catch(err => console.error("❌ Profile Save Error:", err));
 }
 
-// SAVE HIGH SCORE ONLINE
 function saveHighScoreOnline() {
   if (!auth.currentUser) return;
 
@@ -1691,7 +1717,6 @@ function saveHighScoreOnline() {
   .catch(err => console.error("❌ Score Save Error:", err));
 }
 
-// LOAD ONLINE DATA
 function loadOnlineData() {
   if (!auth.currentUser) return;
 
@@ -1760,8 +1785,28 @@ function closeLeaderboard() {
 // PAUSE SYSTEM
 function togglePause() {
   paused = !paused;
-  if (paused) pauseMenu.classList.remove("hidden");
-  else pauseMenu.classList.add("hidden");
+  if (paused && pauseMenu) pauseMenu.classList.remove("hidden");
+  else if (pauseMenu) pauseMenu.classList.add("hidden");
+}
+
+function goToMainMenu() {
+  go = false;
+  paused = false;
+  start = false;
+  reset();
+  if (pauseMenu) pauseMenu.classList.add("hidden");
+  if (startMenu) startMenu.classList.remove("hidden");
+  try { bg.pause(); } catch {}
+}
+
+function toggleSound() {
+  soundOn = !soundOn;
+  if (!soundOn) {
+    try { bg.pause(); } catch {}
+  } else {
+    if (start) try { bg.play(); } catch {}
+  }
+  updateSoundStateText();
 }
 
 // TOAST
@@ -1776,5 +1821,18 @@ function showToast(msg, duration = 2000) {
     statusToast.classList.remove("show");
   }, duration);
 }
+
+// Export for HTML
+window.goToMainMenu = goToMainMenu;
+window.toggleSound = toggleSound;
+window.closeSkinMenu = closeSkinMenu;
+window.closeShopMenu = closeShopMenu;
+window.openShopMenu = openShopMenu;
+window.openChallengeMenu = openChallengeMenu;
+window.closeChallengeMenu = closeChallengeMenu;
+window.openWeeklyMenu = openWeeklyMenu;
+window.closeWeeklyMenu = closeWeeklyMenu;
+window.openLeaderboard = openLeaderboard;
+window.closeLeaderboard = closeLeaderboard;
 
 console.log("✅ Eat Pizza Final Edition Loaded");

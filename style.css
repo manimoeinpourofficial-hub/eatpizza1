@@ -677,3 +677,75 @@ html, body {
   from { transform: translateY(20px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
+
+
+.shop-item {
+  display: flex;
+  align-items: center;
+  background: #020617;
+  padding: 10px;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.shop-item-img {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  background: #0f172a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.shop-item-img-tag {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.shop-icon {
+  font-size: 20px;
+  font-weight: 800;
+  color: #facc15;
+}
+
+.shop-item-info {
+  flex: 1;
+  text-align: left;
+}
+
+.shop-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f9fafb;
+}
+
+.shop-item-sub {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.shop-item-price {
+  font-size: 11px;
+  margin-top: 4px;
+  color: #facc15;
+}
+
+.shop-buy-btn {
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: none;
+  background: #facc15;
+  color: #111;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.shop-buy-btn[disabled] {
+  opacity: 0.4;
+  cursor: default;
+}

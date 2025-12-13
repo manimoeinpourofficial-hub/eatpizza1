@@ -2,140 +2,221 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Eat Pizza</title>
+  <title>Eat Pizza Final Edition</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#111827">
 
   <link rel="stylesheet" href="style.css">
 
-  <!-- Firebase v9 compat (ساده‌تر برای این سبک کد) -->
+  <!-- Firebase compat (مثل نسخهٔ قبل خودت) -->
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
 </head>
 <body>
-  <div id="gameContainer">
-    <canvas id="gameCanvas"></canvas>
+  <div id="frame">
+    <div id="gameContainer">
+      <canvas id="gameCanvas"></canvas>
 
-    <!-- HUD -->
-    <div id="hud">
-      <div class="hud-left">
-        <span id="scoreLabel">Score: 0</span>
-        <span id="comboLabel">Combo: x1</span>
-      </div>
-      <div class="hud-right">
-        <span id="pcLabel">PC: 0</span>
-        <span id="modeLabel">Mode: Normal</span>
-      </div>
-    </div>
-
-    <div id="statusToast"></div>
-
-    <!-- Start Menu -->
-    <div id="startMenu" class="overlay">
-      <div class="menu-box">
-        <h1 class="logo">🍕 Eat Pizza</h1>
-        <p class="subtitle">Cute ANFO Arcade</p>
-
-        <div class="menu-row">
-          <button class="menu-btn primary" onclick="startGame('normal')">Start</button>
-          <button class="menu-btn" onclick="startGame('hard')">Hard</button>
+      <!-- HUD -->
+      <div id="hud">
+        <div class="hud-left">
+          <div id="hudScore" class="hud-pill">Score: 0</div>
+          <div id="hudHigh" class="hud-pill">High: 0</div>
+          <div id="hudMode" class="hud-chip">Mode: NORMAL</div>
         </div>
-
-        <div class="menu-row">
-          <button class="menu-icon-btn" onclick="openShop()">
-            🛒<span>Shop</span>
-          </button>
-          <button class="menu-icon-btn" onclick="openChallenges()">
-            🔥<span>Daily</span>
-          </button>
-          <button class="menu-icon-btn" onclick="openWeekly()">
-            ⭐<span>Weekly</span>
-          </button>
-          <button class="menu-icon-btn" onclick="openLeaderboard()">
-            🏆<span>Top</span>
-          </button>
+        <div class="hud-right">
+          <div id="hudAmmo" class="hud-pill small">Ammo: 0</div>
+          <div id="hudHunger" class="hud-pill small">Hunger: 0%</div>
+          <div id="hudMiss" class="hud-pill small">Miss: 0/3</div>
+          <div id="hudSpeed" class="hud-chip small">Speed: 1.0</div>
+          <div id="hudPC" class="hud-pill pc-pill">PC: 0</div>
+          <button id="pauseBtn" class="icon-btn">II</button>
         </div>
+      </div>
 
-        <div class="menu-row login-row">
-          <button class="menu-small-btn" onclick="googleLogin()">Google</button>
-          <button class="menu-small-btn" onclick="openEmailLogin()">Email</button>
-          <button class="menu-small-btn" onclick="logout()">Logout</button>
+      <!-- Status toast -->
+      <div id="statusToast"></div>
+
+      <!-- LOADING -->
+      <div id="loadingScreen" class="overlay">
+        <div class="menu-box">
+          <h1 class="logo">🍕 Eat Pizza</h1>
+          <p class="subtitle">Final Edition · ANFO</p>
+          <div class="loading-bar">
+            <div id="loadingFill" class="loading-fill"></div>
+          </div>
+          <div id="loadingPercent" class="loading-percent">0%</div>
         </div>
-
-        <button class="menu-btn toggle-btn" onclick="toggleVoiceCheat()">
-          🎤 Voice Cheat: <span id="voiceCheatState">Off</span>
-        </button>
-
-        <div id="profileBox" class="profile-box">Guest</div>
       </div>
-    </div>
 
-    <!-- Pause Menu -->
-    <div id="pauseMenu" class="overlay hidden">
-      <div class="menu-box small">
-        <h2>Paused</h2>
-        <button class="menu-btn primary" onclick="resumeGame()">Resume</button>
-        <button class="menu-btn" onclick="goToStart()">Main Menu</button>
+      <!-- START MENU -->
+      <div id="startMenu" class="overlay hidden">
+        <div class="menu-box">
+          <h1 class="logo">🍕 Eat Pizza</h1>
+          <p class="subtitle">Fast · Cute · Dangerous</p>
+
+          <div class="mode-row">
+            <button class="mode-btn" data-mode-start="easy">Easy</button>
+            <button class="mode-btn primary" data-mode-start="normal">Normal</button>
+            <button class="mode-btn danger" data-mode-start="hard">Hard</button>
+          </div>
+
+          <div class="menu-row">
+            <button class="menu-icon-btn" data-action="shop">
+              🛒<span>Shop</span>
+            </button>
+            <button class="menu-icon-btn" data-action="daily">
+              🔥<span>Daily</span>
+            </button>
+            <button class="menu-icon-btn" data-action="weekly">
+              ⭐<span>Weekly</span>
+            </button>
+            <button class="menu-icon-btn" data-action="leaderboard">
+              🏆<span>Top</span>
+            </button>
+          </div>
+
+          <div class="menu-row">
+            <button class="menu-icon-btn" data-action="skins">
+              🎭<span>Skins</span>
+            </button>
+            <button class="menu-icon-btn" data-action="login">
+              👤<span>Profile</span>
+            </button>
+            <button class="menu-icon-btn" data-action="voice" id="voiceCheatBtn">
+              🎤<span>Voice</span>
+            </button>
+            <button class="menu-icon-btn" data-action="settings">
+              ⚙️<span>Settings</span>
+            </button>
+          </div>
+
+          <div class="voice-row">
+            <span class="voice-label">Voice Cheat:</span>
+            <span id="voiceCheatState">Off</span>
+            <span class="voice-hint">say: “ANFO Ultra Mode”</span>
+          </div>
+
+          <div id="profileDisplay" class="profile-display hidden">
+            <img id="profileAvatar" class="profile-avatar" src="avatar1.png" alt="">
+            <span id="profileName" class="profile-name">Player</span>
+          </div>
+
+          <div class="bottom-hint">
+            <span>Tap to move · Double-tap / Space to shoot</span>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- Leaderboard Modal -->
-    <div id="leaderboardMenu" class="modal hidden">
-      <div class="modal-content leaderboard-box">
-        <div class="modal-header">
+      <!-- PAUSE MENU -->
+      <div id="pauseMenu" class="overlay hidden">
+        <div class="menu-box small">
+          <h2 id="pauseTitle">Paused</h2>
+          <div id="pauseMain">
+            <button class="menu-btn primary" onclick="togglePause()">Resume</button>
+            <button class="menu-btn" onclick="goToMainMenu()">Main Menu</button>
+          </div>
+          <div id="pauseSettings" class="pause-settings">
+            <div class="setting-row">
+              <span>Sound</span>
+              <button class="toggle-chip" onclick="toggleSound()">
+                <span id="soundState">On</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROFILE MENU -->
+      <div id="profileMenu" class="modal hidden">
+        <div class="modal-content profile-box">
+          <h2>Profile</h2>
+          <input id="usernameInput" class="input" placeholder="Your name">
+          <div class="avatar-row">
+            <div class="avatar" data-id="avatar1">
+              <img src="avatar1.png" alt="">
+            </div>
+            <div class="avatar" data-id="avatar2">
+              <img src="avatar2.png" alt="">
+            </div>
+            <div class="avatar" data-id="avatar3">
+              <img src="avatar3.png" alt="">
+            </div>
+            <div class="avatar" data-id="avatar4">
+              <img src="avatar4.png" alt="">
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button id="saveProfileBtn" class="menu-btn primary">Save</button>
+            <button id="closeProfileBtn" class="menu-btn">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SKIN MENU -->
+      <div id="skinMenu" class="modal hidden">
+        <div class="modal-content">
+          <h2>Skins</h2>
+          <div class="skin-list"></div>
+          <button class="menu-btn" onclick="closeSkinMenu()">Close</button>
+        </div>
+      </div>
+
+      <!-- SHOP MENU -->
+      <div id="shopMenu" class="modal hidden">
+        <div class="modal-content">
+          <h2>Shop</h2>
+          <p class="small-sub">Spend PC to unlock special skins</p>
+          <div class="shop-list"></div>
+          <button class="menu-btn" onclick="closeShopMenu()">Close</button>
+        </div>
+      </div>
+
+      <!-- DAILY CHALLENGES -->
+      <div id="challengeMenu" class="modal hidden">
+        <div class="modal-content">
+          <h2>🔥 Daily Challenges</h2>
+          <div id="challengeList"></div>
+          <button class="menu-btn" onclick="closeChallengeMenu()">Close</button>
+        </div>
+      </div>
+
+      <!-- WEEKLY CHALLENGES -->
+      <div id="weeklyMenu" class="modal hidden">
+        <div class="modal-content">
+          <h2>⭐ Weekly Challenges</h2>
+          <div id="weeklyList"></div>
+          <button class="menu-btn" onclick="closeWeeklyMenu()">Close</button>
+        </div>
+      </div>
+
+      <!-- LEADERBOARD -->
+      <div id="leaderboardMenu" class="modal hidden">
+        <div class="modal-content">
           <h2>🏆 Leaderboard</h2>
-          <button class="close-btn" onclick="closeLeaderboard()">✖</button>
+          <div class="leaderboard-list"></div>
+          <button class="menu-btn" onclick="closeLeaderboard()">Close</button>
         </div>
-        <div id="leaderboardLoading" class="leaderboard-loading">Loading…</div>
-        <div class="leaderboard-list"></div>
-      </div>
-    </div>
-
-    <!-- Email Login Modal -->
-    <div id="emailLoginMenu" class="modal hidden">
-      <div class="modal-content">
-        <h2>Email Login</h2>
-        <input id="emailInput" type="email" placeholder="Email" class="input">
-        <input id="passwordInput" type="password" placeholder="Password" class="input">
-        <button onclick="emailLogin()" class="menu-btn primary">Login</button>
-        <button onclick="emailSignup()" class="menu-btn">Sign Up</button>
-        <button onclick="closeEmailLogin()" class="close-btn full">Close</button>
-      </div>
-    </div>
-
-    <!-- Challenges Modal -->
-    <div id="challengeMenu" class="modal hidden">
-      <div class="modal-content challenge-box">
-        <h2>🔥 Daily & Achievements</h2>
-        <div id="challengeList"></div>
-        <button class="close-btn full" onclick="closeChallenges()">Close</button>
-      </div>
-    </div>
-
-    <!-- Weekly Modal -->
-    <div id="weeklyMenu" class="modal hidden">
-      <div class="modal-content challenge-box">
-        <h2>⭐ Weekly Challenges</h2>
-        <div id="weeklyList"></div>
-        <button class="close-btn full" onclick="closeWeekly()">Close</button>
-      </div>
-    </div>
-
-    <!-- Shop Modal -->
-    <div id="shopMenu" class="modal hidden">
-      <div class="modal-content shop-box">
-        <h2>🛒 Shop</h2>
-        <div id="shopFeatured"></div>
-        <hr>
-        <div id="shopSkins"></div>
-        <button class="close-btn full" onclick="closeShop()">Close</button>
       </div>
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script>
+    // Firebase init – از کانفیگ خودت
+    const firebaseConfig = {
+      apiKey: "AIzaSyB8PV0S43tJdZYAgwSsXq5fpBrcukczgec",
+      authDomain: "eat-pizza-b1651.firebaseapp.com",
+      projectId: "eat-pizza-b1651",
+      storageBucket: "eat-pizza-b1651.firebasestorage.app",
+      messagingSenderId: "691132791942",
+      appId: "1:691132791942:web:90070f3e73940e6916e507",
+      measurementId: "G-GKJ6YS8G4E"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+  </script>
+
+  <script src="eat-pizza-final-edition.js"></script>
 </body>
 </html>

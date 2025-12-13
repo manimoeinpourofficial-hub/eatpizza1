@@ -7,16 +7,19 @@
    Firebase Safe Mode
 --------------------------------*/
 let auth = null, db = null, firebaseReady = false;
+let firebaseOfflineReason = "";
 
 try {
   if (window.firebase && firebase.apps && firebase.apps.length > 0) {
-    firebaseReady = true;
     auth = firebase.auth();
     db = firebase.firestore();
+    firebaseReady = true;
   } else {
+    firebaseOfflineReason = "No firebase.apps";
     console.warn("Firebase app not initialized, running offline.");
   }
 } catch (e) {
+  firebaseOfflineReason = e?.message || "Firebase init error";
   console.warn("Firebase not available, running offline.", e);
   firebaseReady = false;
 }
@@ -144,8 +147,8 @@ const img = {
 
   r: loadImg("pizza1.png"),
   g: loadImg("DRUG.png"),     // drug
-  b: loadImg("weed.webp"),     // weed (PNG instead of webp)
-  o: loadImg("shit.webp"),     // shit (PNG instead of webp)
+  b: loadImg("weed.webp"),    // weed
+  o: loadImg("shit.webp"),    // shit
 
   bu: loadImg("bullet.png"),
   s: loadImg("speed.png"),
@@ -159,7 +162,7 @@ const img = {
 --------------------------------*/
 function safeAudio(src) {
   const a = new Audio(src);
-  a.preload = "none"; // let browser decide
+  a.preload = "none";
   return a;
 }
 
@@ -266,6 +269,10 @@ function updateSkinMenu() {
   list.innerHTML = "";
   Object.keys(skins).forEach(id => {
     const s = skins[id];
+    if (!img[id]) {
+      console.warn("Missing image for skin", id);
+      return;
+    }
     const div = document.createElement("div");
     div.className = "skin-option";
     div.dataset.skin = id;
@@ -490,22 +497,65 @@ closeProfileBtn && (closeProfileBtn.onclick = closeProfileMenu);
    Firebase Online Sync (Safe Mode)
 --------------------------------*/
 
-if (firebaseReady && auth) {
-  auth.signInAnonymously()
-    .then(() => {
-      console.log("✅ Firebase Connected");
-       console.log("DEBUG profile:", profile);
-console.log("DEBUG pc:", pc);
-console.log("DEBUG currentSkin:", currentSkin);
-console.log("DEBUG hs:", hs);
-console.log("DEBUG firebaseReady:", firebaseReady);
-console.log("DEBUG user:", auth.currentUser);
-      loadOnlineData();
-    })
-    .catch(err => {
-      console.warn("⚠ Firebase offline mode:", err);
-      firebaseReady = false;
-    });
+function loadOnlineDataPromise() {
+  if (!firebaseReady || !auth || !db) return Promise.resolve();
+  const user = auth.currentUser;
+  if (!user) return Promise.resolve();
+
+  const profRef = db.collection("profiles").doc(user.uid);
+  const scoreRef = db.collection("scores").doc(user.uid);
+
+  const profP = profRef.get().then(doc => {
+    if (!doc.exists) {
+      const defaultProfile = {
+        username: "Guest",
+        avatar: "p1",
+        skin: "p",
+        pc: 0,
+        created: Date.now()
+      };
+
+      profRef.set(defaultProfile);
+
+      profile = { username: "Guest", avatar: "p1", skin: "p" };
+      pc = 0;
+      currentSkin = "p";
+
+    } else {
+      const d = doc.data();
+      profile = {
+        username: d.username || "Guest",
+        avatar: d.avatar || "p1",
+        skin: d.skin || "p"
+      };
+
+      pc = d.pc ?? 0;
+      currentSkin = profile.skin;
+    }
+
+    if (!img[currentSkin]) currentSkin = "p";
+
+    localStorage.setItem("profile", JSON.stringify(profile));
+    localStorage.setItem("pc", pc);
+    localStorage.setItem("skin", currentSkin);
+  });
+
+  const scoreP = scoreRef.get().then(doc => {
+    if (!doc.exists) {
+      scoreRef.set({
+        score: 0,
+        username: profile?.username || "Guest",
+        created: Date.now()
+      });
+      hs = 0;
+    } else {
+      const d = doc.data();
+      hs = d.score ?? 0;
+    }
+    localStorage.setItem("hs", hs);
+  });
+
+  return Promise.all([profP, scoreP]);
 }
 
 /* -------------------------------
@@ -540,82 +590,6 @@ function saveHighScoreOnline() {
     updated: Date.now()
   }, { merge: true })
   .catch(err => console.warn("hs save fail", err));
-}
-
-/* -------------------------------
-   Load Online Data
---------------------------------*/
-function loadOnlineData() {
-  if (!firebaseReady || !auth || !db) return;
-  const user = auth.currentUser;
-  if (!user) return;
-
-  /* ---- Load Profile ---- */
-  db.collection("profiles").doc(user.uid).get()
-    .then(doc => {
-      if (!doc.exists) {
-        // Create default profile
-        const defaultProfile = {
-          username: "Guest",
-          avatar: "p1",
-          skin: "p",
-          pc: 0,
-          created: Date.now()
-        };
-
-        db.collection("profiles").doc(user.uid).set(defaultProfile);
-
-        profile = { username: "Guest", avatar: "p1", skin: "p" };
-        pc = 0;
-        currentSkin = "p";
-
-        localStorage.setItem("profile", JSON.stringify(profile));
-        localStorage.setItem("pc", pc);
-        localStorage.setItem("skin", currentSkin);
-
-        updateSkinMenu(); updateShopUI(); updateHUD();
-        return;
-      }
-
-      const d = doc.data();
-      profile = {
-        username: d.username || "Guest",
-        avatar: d.avatar || "p1",
-        skin: d.skin || "p"
-      };
-
-      pc = d.pc ?? 0;
-      currentSkin = profile.skin;
-
-      localStorage.setItem("profile", JSON.stringify(profile));
-      localStorage.setItem("pc", pc);
-      localStorage.setItem("skin", currentSkin);
-
-      updateSkinMenu(); updateShopUI(); updateHUD();
-    })
-    .catch(err => console.warn("profile load fail", err));
-
-  /* ---- Load Score ---- */
-  db.collection("scores").doc(user.uid).get()
-    .then(doc => {
-      if (!doc.exists) {
-        db.collection("scores").doc(user.uid).set({
-          score: 0,
-          username: profile?.username || "Guest",
-          created: Date.now()
-        });
-        hs = 0;
-        localStorage.setItem("hs", hs);
-        updateHUD();
-        return;
-      }
-
-      const d = doc.data();
-      hs = d.score ?? 0;
-      localStorage.setItem("hs", hs);
-      updateHUD();
-    })
-    .catch(err => console.warn("score load fail", err));
 }
 
 /* -------------------------------
@@ -1101,7 +1075,7 @@ function drawBG() {
 }
 
 function drawPlayer() {
-  const skin = img[currentSkin];
+  const skin = img[currentSkin] || img.p;
   if (!skin.complete) return;
   x.save();
   x.translate(p.x + p.w / 2, p.y + p.h / 2);
@@ -1281,42 +1255,107 @@ loadingLoop();
 
 /* -------------------------------
    Asset loading & removing loader
+   (مرحله‌ای + Firebase Safe Mode)
 --------------------------------*/
-const assets = [
+const imgAssets = [
   img.p, img.pizzakhoor11, img.pizzakhoor12,
-  img.r, img.g, img.b, img.o, img.bu, img.s, img.fever, img.bg,
-  ...Object.values(sounds).flat(), bg
+  img.r, img.g, img.b, img.o, img.bu, img.s, img.fever, img.bg
 ];
-let loadedCount = 0;
 
-function assetDone() {
-  loadedCount++;
-  const percent = Math.min(100, Math.round(loadedCount / assets.length * 100));
+let imgLoadedCount = 0;
+let firebasePhaseDone = false;
+let uiPhaseDone = false;
+
+function setLoadingPercent(p) {
   const fill = document.getElementById("loadingFill");
   const percentEl = document.getElementById("loadingPercent");
-  if (fill) fill.style.width = percent + "%";
-  if (percentEl) percentEl.textContent = percent + "%";
+  if (fill) fill.style.width = p + "%";
+  if (percentEl) percentEl.textContent = p + "%";
+}
 
-  if (loadedCount >= assets.length) {
-    setTimeout(() => {
-      if (loadingScreen) {
-        loadingScreen.style.opacity = "0";
-        setTimeout(() => loadingScreen.remove(), 400);
-      }
-      startMenu && startMenu.classList.remove("hidden");
-      updateSkinMenu(); updateShopUI(); loadMissions(); updateChallengesUI(); updateWeeklyUI(); updateHUD();
-      updateSettingsUI();
-    }, 400);
+function assetImgDone() {
+  imgLoadedCount++;
+  const ratio = imgLoadedCount / imgAssets.length;
+  const p = Math.min(60, Math.round(ratio * 60));
+  setLoadingPercent(p);
+
+  if (imgLoadedCount >= imgAssets.length) {
+    startFirebasePhase();
   }
 }
 
-assets.forEach(a => {
+imgAssets.forEach(a => {
   if (a instanceof Image) {
-    a.onload = assetDone; a.onerror = assetDone;
-  } else if (a instanceof Audio) {
-    a.oncanplaythrough = assetDone; a.onerror = assetDone;
+    a.onload = assetImgDone; a.onerror = assetImgDone;
+  } else {
+    assetImgDone();
   }
 });
+
+function startFirebasePhase() {
+  if (!firebaseReady || !auth || !db) {
+    console.warn("Firebase offline or not ready:", firebaseOfflineReason);
+    firebasePhaseDone = true;
+    setLoadingPercent(75);
+    startUIPhase();
+    return;
+  }
+
+  setLoadingPercent(65);
+
+  auth.signInAnonymously()
+    .then(() => {
+      console.log("✅ Firebase Connected");
+      console.log("DEBUG profile (before online):", profile);
+      console.log("DEBUG pc:", pc);
+      console.log("DEBUG currentSkin:", currentSkin);
+      console.log("DEBUG hs:", hs);
+      console.log("DEBUG firebaseReady:", firebaseReady);
+      console.log("DEBUG user:", auth.currentUser);
+
+      return loadOnlineDataPromise();
+    })
+    .then(() => {
+      firebasePhaseDone = true;
+      setLoadingPercent(80);
+      startUIPhase();
+    })
+    .catch(err => {
+      console.warn("⚠ Firebase offline mode:", err);
+      firebaseReady = false;
+      firebasePhaseDone = true;
+      setLoadingPercent(75);
+      startUIPhase();
+    });
+}
+
+function startUIPhase() {
+  if (uiPhaseDone) return;
+  uiPhaseDone = true;
+
+  setLoadingPercent(90);
+
+  updateSkinMenu();
+  updateShopUI();
+  loadMissions();
+  updateChallengesUI();
+  updateWeeklyUI();
+  updateHUD();
+  updateSettingsUI();
+
+  finishLoading();
+}
+
+function finishLoading() {
+  setLoadingPercent(100);
+  setTimeout(() => {
+    if (loadingScreen) {
+      loadingScreen.style.opacity = "0";
+      setTimeout(() => loadingScreen.remove(), 400);
+    }
+    startMenu && startMenu.classList.remove("hidden");
+  }, 400);
+}
 
 /* -------------------------------
    Export for HTML

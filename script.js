@@ -6,7 +6,7 @@ const x = c.getContext("2d");
 
 let W = innerWidth, H = innerHeight;
 
-let p = { x: 0, y: 0, w: 0, h: 0, scale: 1 };
+let p = { x: 0, y: 0, w: 0, h: 0, scale: 1, glow: false };
 
 let reds = [], obs = [], greens = [], blues = [], bullets = [], buffs = [], particles = [];
 
@@ -31,8 +31,16 @@ let paused = false;
 let currentMode = "normal";
 let soundOn = true;
 
-// SlowMo (چیت دوم)
+// SlowMo (چیت دوم اولیه، نگه می‌داریم)
 let slowMoUntil = 0;
+
+// God Mode (چیت جدید ضد ضربه)
+let godMode = false;
+let godModeUntil = 0;
+
+// Fever Mode
+let feverActive = false;
+let feverUntil = 0;
 
 // DOM refs
 const pauseMenu = document.getElementById("pauseMenu");
@@ -90,7 +98,7 @@ const makeAudio = src => {
 const sounds = {
   pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3")],
   drug: makeAudio("1.mp3"),
-  //weed: makeAudio("weed.mp3"),//
+  //weed: makeAudio("weed.mp3"),
   shit: makeAudio("4.mp3"),
   explode: makeAudio("gooz1.mp3"),
   gameOver: makeAudio("gameover.mp3")
@@ -104,27 +112,28 @@ let queue = [], playing = false, cool = {};
 
 function playSound(n) {
   if (!start || !soundOn) return;
-  if (playing) return;
 
   const now = Date.now();
-  if (now - (cool[n] || 0) < 500) return;
+  if (now - (cool[n] || 0) < 120) return; // کمی کوتاه‌تر که هیجان بیشتر بشه
   cool[n] = now;
 
-  let s = sounds[n];
+  const s = sounds[n];
   if (!s) return;
 
-  let a = (Array.isArray(s) ? s[Math.random() * s.length | 0] : s).cloneNode();
-  queue.push(a);
-  processQueue();
+  let baseAudio = Array.isArray(s) ? s[(Math.random() * s.length) | 0] : s;
+  // برای اینکه حتی اگر در حال پخش است، دوباره بشنوی، از cloneNode استفاده کن:
+  const a = baseAudio.cloneNode();
+  a.currentTime = 0;
+  a.play().catch(() => {});
 }
 
-function processQueue() {
-  if (playing || !queue.length) return;
-  const a = queue.shift();
-  playing = true;
+function playHitSound() {
+  // شیت / برخورد تیر / هرچی: این یکی همیشه باید شنیده بشه
+  const base = sounds.shit;
+  if (!base) return;
+  const a = base.cloneNode();
   a.currentTime = 0;
-  a.play().catch(() => playing = false);
-  a.onended = () => { playing = false; processQueue(); };
+  a.play().catch(() => {});
 }
 
 // ---------------------------
@@ -160,14 +169,15 @@ const img = {
   b: I("weed.webp"),
   o: I("shit.webp"),
   bu: I("bullet.png"),
-  s: I("speed.png")
+  s: I("speed.png"),
+  fever: I("pizza44.png") // برای آینده: آیتم Fever Mode
 };
 
 // ---------------------------
 //  LOADING LOGIC
 // ---------------------------
 const assetsToLoad = [
-  img.p, img.r, img.g, img.b, img.o, img.bu, img.s,
+  img.p, img.r, img.g, img.b, img.o, img.bu, img.s, img.fever,
   ...Object.values(sounds).flat().filter(a => a instanceof Audio),
   bg
 ];
@@ -190,7 +200,6 @@ function updateLoadingProgress() {
   }
 }
 
-// hook images
 assetsToLoad.forEach(asset => {
   if (asset instanceof Image) {
     asset.addEventListener("load", updateLoadingProgress);
@@ -201,7 +210,6 @@ assetsToLoad.forEach(asset => {
   }
 });
 
-// fallback اگر چیزی خیلی طول بکشه
 setTimeout(() => {
   if (loadingScreen.style.display !== "none") {
     loadingFill.style.width = "100%";
@@ -226,15 +234,14 @@ if (startGameBtn) {
 document.querySelectorAll(".menu-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const act = btn.dataset.action;
-
     if (act === "login") {
       openProfileMenu();
     } else if (act === "modes") {
-      // بعداً می‌تونیم منوی Mode جدا بسازیم
+      // بعداً Mode جدا
     } else if (act === "leaderboard") {
-      // اینجا بعداً Leaderboard آنلاین وصل می‌شه
+      // بعداً
     } else if (act === "settings") {
-      // می‌تونیم یک Settings جدا هم اضافه کنیم
+      // بعداً
     }
   });
 });
@@ -251,7 +258,6 @@ function highlightAvatar() {
 
 function openProfileMenu() {
   profileMenu.classList.remove("hidden");
-
   if (profile) {
     usernameInput.value = profile.username;
     selectedAvatar = profile.avatar;
@@ -300,21 +306,25 @@ function move(mx) {
   p.x = Math.max(0, Math.min(mx - p.w / 2, W - p.w));
 }
 
-c.addEventListener("mousemove", e => move(e.clientX - c.getBoundingClientRect().left));
-c.addEventListener("touchmove", e => move(e.touches[0].clientX - c.getBoundingClientRect().left), { passive: true });
+c.addEventListener("mousemove", e => {
+  const rect = c.getBoundingClientRect();
+  move(e.clientX - rect.left);
+});
+c.addEventListener("touchmove", e => {
+  const rect = c.getBoundingClientRect();
+  move(e.touches[0].clientX - rect.left);
+}, { passive: true });
 
 // دابل‌تپ برای شلیک روی موبایل
 let lastTapTime = 0;
 
-// برای چیت 1: ذخیره زمان کلیک‌ها (کیبورد + تاچ)
+// CHEAT 1: 20 input → +30 ammo
 let inputTimes = [];
 
-// ✅ CHEAT 1: 20 inputs in 5 seconds → +30 ammo
 function registerInputForCheat() {
   const now = Date.now();
   inputTimes.push(now);
   inputTimes = inputTimes.filter(t => now - t <= 5000);
-
   if (inputTimes.length >= 20) {
     ammo += 30;
     spawnParticles(p.x + p.w / 2, p.y, "gold", 25);
@@ -322,26 +332,43 @@ function registerInputForCheat() {
   }
 }
 
-// ✅ CHEAT 2 DESKTOP: Type "anfo" → SlowMo
+// SlowMo چیت قدیمی
 let cheatBuffer = "";
 
 function activateSlowMo() {
-  slowMoUntil = Date.now() + 5000; // 5 ثانیه
+  slowMoUntil = Date.now() + 5000;
   spawnParticles(p.x + p.w / 2, p.y, "#88ddff", 40);
 }
 
+// GodMode چیت جدید (ضد ضربه + افکت نور)
+function activateGodMode(duration = 8000) {
+  godMode = true;
+  godModeUntil = Date.now() + duration;
+  p.glow = true;
+  spawnParticles(p.x + p.w / 2, p.y, "#00faff", 50);
+}
+
+function updateGodMode(now) {
+  if (!godMode) return;
+  if (now > godModeUntil) {
+    godMode = false;
+    p.glow = false;
+  }
+}
+
+// تبدیل cheat ANFO از SlowMo به GodMode:
 addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   cheatBuffer += k;
   if (cheatBuffer.length > 4) cheatBuffer = cheatBuffer.slice(-4);
 
   if (cheatBuffer === "anfo") {
-    activateSlowMo();
+    activateGodMode();
     cheatBuffer = "";
   }
 });
 
-// ✅ CHEAT 3 MOBILE: Swipe pattern LR → DU → RL → UD → SlowMo
+// CHEAT 3 MOBILE: Swipe pattern → SlowMo (فعلاً نگه می‌داریم)
 let swipeState = [];
 let touchStartX = 0, touchStartY = 0;
 let touchActive = false;
@@ -402,18 +429,20 @@ c.addEventListener("touchend", e => {
   }
 
   if (absX > absY) {
-    if (dx > 0) addSwipeDir("LR");
-    else addSwipeDir("RL");
+    addSwipeDir(dx > 0 ? "LR" : "RL");
   } else {
-    if (dy < 0) addSwipeDir("DU");
-    else addSwipeDir("UD");
+    addSwipeDir(dy < 0 ? "DU" : "UD");
   }
-
   touchActive = false;
 });
 
+// شلیک تک‌تیر (کیبورد – نگه داشتن Space اسپم نمی‌کند)
+let canShootKeyboard = true;
+
 addEventListener("keydown", e => {
-  if (e.code === "Space") {
+  if (e.code === "Space" && canShootKeyboard) {
+    canShootKeyboard = false;
+
     if (!start) {
       start = true;
       if (soundOn) bg.play();
@@ -430,6 +459,12 @@ addEventListener("keydown", e => {
   if (e.code === "KeyP" && start && !go) togglePause();
 });
 
+addEventListener("keyup", e => {
+  if (e.code === "Space") {
+    canShootKeyboard = true;
+  }
+});
+
 // دکمه Pause موبایل
 if (pauseBtn) {
   pauseBtn.addEventListener("click", () => {
@@ -442,19 +477,22 @@ if (pauseBtn) {
 //  SHOOTING
 // ---------------------------
 function shootSingle() {
-  if (ammo > 0) {
-    ammo--;
-    bullets.push({
-      x: p.x + p.w / 2 - bs / 2,
-      y: p.y - 6,
-      w: bs,
-      h: bs * 2,
-      s: 12,
-      img: img.bu
-    });
-  }
+  if (ammo <= 0) return;
+  ammo--;
+  bullets.push({
+    x: p.x + p.w / 2 - bs / 2,
+    y: p.y - 6,
+    w: bs,
+    h: bs * 2,
+    s: 12,
+    img: img.bu
+  });
+  // صدای شلیک اگر بعداً اضافه شد می‌تونی اینجا playSound("...") بزنی
 }
 
+// ---------------------------
+//  COLLISION
+// ---------------------------
 const coll = (a, b) =>
   a.x < b.x + b.w &&
   a.x + a.w > b.x &&
@@ -489,7 +527,7 @@ function updParticles(dt) {
 }
 
 // ---------------------------
-//  MODE (نرم‌تر شده)
+//  MODE
 // ---------------------------
 function applyMode(mode) {
   currentMode = mode;
@@ -538,6 +576,12 @@ function reset() {
 
   shake = 0;
 
+  slowMoUntil = 0;
+  godMode = false;
+  p.glow = false;
+  feverActive = false;
+  feverUntil = 0;
+
   applyMode(currentMode);
 
   const now = Date.now();
@@ -562,7 +606,7 @@ function togglePause() {
   if (paused) {
     paused = false;
     hidePauseMenu();
-    if (soundOn) bg.play();
+    if (soundOn && start && !go) bg.play();
   } else {
     paused = true;
     showPauseMenu();
@@ -639,15 +683,16 @@ function spawn(type, w, h, chanceZig = 0.3) {
     h,
     zigzag: zig,
     dir: Math.random() < 0.5 ? -1 : 1,
-    amp: 20 + Math.random() * 40,
+    amp: 15 + Math.random() * 50,   // کمی متنوع‌تر
     t: Math.random() * Math.PI * 2,
     baseX: null,
-    tType: type
+    tType: type,
+    zigSpeed: 0.05 + Math.random() * 0.07  // سرعت متفاوت زیگزاگ
   };
 }
 
 // ---------------------------
-//  HARDER OVER TIME (نرم‌تر)
+//  HARDER OVER TIME
 // ---------------------------
 setInterval(() => {
   if (start && !go && !paused) {
@@ -683,27 +728,59 @@ function breakCombo() {
 }
 
 // ---------------------------
-//  ZIGZAG
+//  ZIGZAG (بهبود‌یافته)
 // ---------------------------
 function applyZigzag(o, sp) {
   if (!o.zigzag) return;
   if (o.baseX == null) o.baseX = o.x;
-  o.t += 0.08 * sp;
+  const zsp = o.zigSpeed || 0.08;
+  o.t += zsp * sp;
   o.x = o.baseX + Math.sin(o.t) * o.amp * o.dir;
 }
 
 // ---------------------------
-//  UPDATE (قسمت اول)
+//  FEVER MODE
+// ---------------------------
+function activateFever() {
+  if (feverActive) return;
+  feverActive = true;
+  feverUntil = Date.now() + 7000; // 7 ثانیه
+  gameSpeed *= 1.2;
+  comboMultiplier *= 2; // توی Fever کامبو قوی‌تر
+  bg.playbackRate = 1.3;
+}
+
+function updateFever(now) {
+  if (!feverActive) return;
+  if (now > feverUntil) {
+    feverActive = false;
+    gameSpeed /= 1.2;
+    comboMultiplier = 1;
+    bg.playbackRate = 1;
+  }
+}
+
+// ---------------------------
+//  UPDATE
 // ---------------------------
 function upd() {
   if (!start || go || paused) return;
 
   const now = Date.now();
 
+  // زمان‌بندی حالت‌ها
+  updateGodMode(now);
+  updateFever(now);
+
   let sp = gameSpeed;
   let slowFactor = 1;
   if (now < slowMoUntil) {
     slowFactor = 0.5;
+  }
+
+  // اگر Speed Buff فعاله، کمی تقویت
+  if (now < speedBoostUntil) {
+    sp *= 1.3;
   }
 
   let effSp = sp * slowFactor;
@@ -723,12 +800,12 @@ function upd() {
   }
 
   if (now > nextGreen && Math.random() < 0.2) {
-    greens.push(spawn("green", item, item, 0.2));
+    greens.push(spawn("green", item, item, 0.25));
     nextGreen = now + 6000;
   }
 
   if (now > nextBlue && Math.random() < 0.2) {
-    blues.push(spawn("blue", item, item, 0.2));
+    blues.push(spawn("blue", item, item, 0.25));
     nextBlue = now + 8000;
   }
 
@@ -738,7 +815,8 @@ function upd() {
   }
 
   // Reds (pizza)
-  reds.forEach((r, i) => {
+  for (let i = reds.length - 1; i >= 0; i--) {
+    const r = reds[i];
     r.y += 1.3 * effSp;
     applyZigzag(r, effSp);
 
@@ -746,6 +824,7 @@ function upd() {
       handleComboPizzaTake();
       let base = 5;
       if (now < slowMoUntil) base *= 1.2;
+      if (feverActive) base *= 2;
       let gained = base * comboMultiplier;
       score += Math.round(gained);
 
@@ -763,6 +842,12 @@ function upd() {
 
       reds.splice(i, 1);
       playSound("pizza");
+
+      // اگر خواستی: روی کامبو بالا Fever فعال کن
+      if (combo >= 10 && !feverActive) {
+        activateFever();
+      }
+
     } else if (r.y > H) {
       reds.splice(i, 1);
       miss++;
@@ -773,25 +858,34 @@ function upd() {
         shake = 20;
       }
     }
-  });
+  }
 
   // Obstacles
-  obs.forEach((o, i) => {
+  for (let i = obs.length - 1; i >= 0; i--) {
+    const o = obs[i];
     o.y += 1.5 * effSp;
     applyZigzag(o, effSp);
 
     if (coll(p, o)) {
-      go = true;
-      playSound("shit");
-      spawnParticles(p.x + p.w / 2, p.y + p.h / 2, "red", 15);
-      shake = 20;
+      if (!godMode) {
+        go = true;
+        playHitSound();
+        spawnParticles(p.x + p.w / 2, p.y + p.h / 2, "red", 15);
+        shake = 20;
+      } else {
+        // در God Mode دشمن نابود میشه ولی تو نمی‌میری
+        obs.splice(i, 1);
+        spawnParticles(o.x + o.w / 2, o.y + o.h / 2, "#00faff", 15);
+        shake = 5;
+      }
     } else if (o.y > H) {
       obs.splice(i, 1);
     }
-  });
+  }
 
   // Greens
-  greens.forEach((g, i) => {
+  for (let i = greens.length - 1; i >= 0; i--) {
+    const g = greens[i];
     g.y += 1.1 * effSp;
     applyZigzag(g, effSp);
 
@@ -802,10 +896,11 @@ function upd() {
       spawnParticles(g.x + g.w / 2, g.y + g.h / 2, "#00ff99", 8);
       playSound("drug");
     }
-  });
+  }
 
   // Blues
-  blues.forEach((b, i) => {
+  for (let i = blues.length - 1; i >= 0; i--) {
+    const b = blues[i];
     b.y += 1.0 * effSp;
     applyZigzag(b, effSp);
 
@@ -816,10 +911,11 @@ function upd() {
       spawnParticles(b.x + b.w / 2, b.y + b.h / 2, "#00ccff", 8);
       //playSound("weed");
     }
-  });
+  }
 
-  // Buffs (speed)
-  buffs.forEach((bf, i) => {
+  // Buffs (speed / در آینده fever)
+  for (let i = buffs.length - 1; i >= 0; i--) {
+    const bf = buffs[i];
     bf.y += 1.3 * effSp;
     applyZigzag(bf, effSp);
 
@@ -833,17 +929,19 @@ function upd() {
     } else if (bf.y > H) {
       buffs.splice(i, 1);
     }
-  });
+  }
 
   // Bullets
-  bullets.forEach((b, i) => {
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
     b.y -= b.s;
     if (b.y + b.h < 0) {
       bullets.splice(i, 1);
-      return;
+      continue;
     }
 
-    obs.forEach((o, j) => {
+    for (let j = obs.length - 1; j >= 0; j--) {
+      const o = obs[j];
       if (coll(b, o)) {
         obs.splice(j, 1);
         score += 3;
@@ -851,15 +949,16 @@ function upd() {
         spawnParticles(o.x + o.w / 2, o.y + o.h / 2, "#ff6600", 12);
         playSound("explode");
         shake = 10;
+        break;
       }
-    });
-  });
+    }
+  }
 
   updParticles(dt);
 
   if (combo > 0 && now - lastPizzaTime > 2500) breakCombo();
 
-  // HUD update
+  // HUD update (بهینه: یکجا)
   if (hudScore) hudScore.textContent = "Score: " + score;
   if (hudHigh) hudHigh.textContent = "High: " + hs;
   if (hudAmmo) hudAmmo.textContent = "Ammo: " + ammo;
@@ -897,10 +996,26 @@ function draw() {
     x.fillRect(0, 0, W, H);
   }
 
+  if (feverActive) {
+    x.fillStyle = "rgba(255, 220, 80, 0.12)";
+    x.fillRect(0, 0, W, H);
+  }
+
   // Player
   x.save();
   x.translate(p.x + p.w / 2, p.y + p.h / 2);
   x.scale(p.scale || 1, p.scale || 1);
+
+  if (p.glow) {
+    const grd = x.createRadialGradient(0, 0, p.w * 0.3, 0, 0, p.w);
+    grd.addColorStop(0, "rgba(0,250,255,0.8)");
+    grd.addColorStop(1, "rgba(0,250,255,0)");
+    x.fillStyle = grd;
+    x.beginPath();
+    x.arc(0, 0, p.w, 0, Math.PI * 2);
+    x.fill();
+  }
+
   x.drawImage(img.p, -p.w / 2, -p.h / 2, p.w, p.h);
   x.restore();
 
@@ -929,7 +1044,7 @@ function draw() {
   });
 
   // Combo text
-  if (comboText && Date.now() < comboTextUntil) {
+  if (comboText && now < comboTextUntil) {
     x.textAlign = "center";
     x.font = "24px Arial";
     x.fillStyle = "#ffdd33";
@@ -942,6 +1057,13 @@ function draw() {
     x.font = "18px Arial";
     x.fillStyle = "#88ddff";
     x.fillText("ANFO SLOW-MO", W / 2, 100);
+  }
+
+  if (feverActive) {
+    x.textAlign = "center";
+    x.font = "20px Arial";
+    x.fillStyle = "#ffbb33";
+    x.fillText("FEVER MODE!", W / 2, 130);
   }
 
   // Game Over overlay
@@ -975,7 +1097,7 @@ function draw() {
 applyMode("normal");
 reset();
 
-
+// Firebase
 auth.signInAnonymously()
   .then(() => {
     console.log("✅ Firebase Connected:", auth.currentUser.uid);

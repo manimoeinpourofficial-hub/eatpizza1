@@ -59,11 +59,11 @@ body.playing {
   pointer-events: auto;
 }
 .top-stop-btn {
-  background: rgba(15,23,42,0.8);
-  border: none;
+  background: #111827;
+  border: 1px solid #facc15;
   padding: 4px 10px;
   border-radius: 999px;
-  color: #fff;
+  color: #facc15;
   font-size: 16px;
   pointer-events: auto;
 }
@@ -74,7 +74,8 @@ body.playing {
   bottom: 40px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(15,23,42,0.9);
+  background: #111827;
+  border: 1px solid #facc15;
   padding: 10px 20px;
   border-radius: 999px;
   opacity: 0;
@@ -86,13 +87,13 @@ body.playing {
   opacity: 1;
 }
 
-/* OVERLAYS */
+/* OVERLAYS / MODALS */
 .overlay,
 .modal,
 .start-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(15,23,42,0.85);
+  background: rgba(0,0,0,0.85);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -101,19 +102,20 @@ body.playing {
 
 .hidden { display: none !important; }
 
-/* GENERIC PANEL / BOX */
+/* PANELS */
 .menu-box,
 .start-panel,
 .modal-content {
-  background: rgba(15,23,42,0.95);
+  background: #020617;
   border-radius: 18px;
   padding: 18px 16px;
   width: 90%;
   max-width: 360px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+  border: 1px solid #1f2937;
 }
 
-/* LOADING */
+/* LOADING (center, black/yellow) */
 .loading-box {
   text-align: center;
 }
@@ -129,7 +131,7 @@ body.playing {
 .loading-bar {
   width: 100%;
   height: 10px;
-  background: rgba(148,163,184,0.4);
+  background: #111827;
   border-radius: 999px;
   overflow: hidden;
 }
@@ -186,13 +188,14 @@ body.playing {
 .mode-chip {
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(30,64,175,0.4);
-  border: none;
+  background: #111827;
+  border: 1px solid #4b5563;
   color: #e5e7eb;
   font-size: 12px;
 }
 .mode-chip.selected {
   background: #facc15;
+  border-color: #facc15;
   color: #111827;
 }
 
@@ -204,9 +207,9 @@ body.playing {
 }
 .menu-tile {
   padding: 10px;
-  background: rgba(15,23,42,0.95);
+  background: #020617;
   border-radius: 12px;
-  border: 1px solid rgba(148,163,184,0.45);
+  border: 1px solid #4b5563;
   color: #e5e7eb;
   font-size: 13px;
 }
@@ -221,7 +224,7 @@ body.playing {
   padding: 9px 12px;
   border-radius: 10px;
   border: none;
-  background: rgba(55,65,81,0.9);
+  background: #111827;
   color: #e5e7eb;
   width: 100%;
   font-size: 14px;
@@ -243,8 +246,8 @@ body.playing {
 .toggle-chip {
   padding: 4px 10px;
   border-radius: 999px;
-  border: none;
-  background: rgba(55,65,81,0.9);
+  border: 1px solid #4b5563;
+  background: #020617;
   color: #e5e7eb;
 }
 
@@ -253,7 +256,7 @@ body.playing {
   width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid rgba(148,163,184,0.6);
+  border: 1px solid #4b5563;
   background: #020617;
   color: #e5e7eb;
   margin-top: 10px;
@@ -297,10 +300,10 @@ body.playing {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(15,23,42,0.95);
+  background: #020617;
   padding: 10px;
   border-radius: 12px;
-  border: 1px solid rgba(148,163,184,0.4);
+  border: 1px solid #4b5563;
 }
 .skin-option.locked {
   opacity: 0.4;
@@ -328,10 +331,10 @@ body.playing {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(15,23,42,0.95);
+  background: #020617;
   padding: 10px;
   border-radius: 12px;
-  border: 1px solid rgba(148,163,184,0.4);
+  border: 1px solid #4b5563;
 }
 .shop-item-img-tag {
   width: 42px;
@@ -365,12 +368,12 @@ body.playing {
 
 /* MISSIONS */
 .mission-item {
-  background: rgba(15,23,42,0.95);
+  background: #020617;
   padding: 10px;
   border-radius: 12px;
   margin-bottom: 8px;
   text-align: left;
-  border: 1px solid rgba(148,163,184,0.4);
+  border: 1px solid #4b5563;
 }
 .mission-item.completed {
   background: rgba(234,179,8,0.16);
@@ -383,7 +386,7 @@ body.playing {
 .mission-bar {
   width: 100%;
   height: 6px;
-  background: rgba(148,163,184,0.4);
+  background: #111827;
   border-radius: 999px;
   margin-bottom: 6px;
 }
@@ -405,11 +408,11 @@ body.playing {
   margin-top: 10px;
 }
 .leaderboard-item {
-  background: rgba(15,23,42,0.95);
+  background: #020617;
   padding: 8px 10px;
   border-radius: 8px;
   font-size: 13px;
-  border: 1px solid rgba(148,163,184,0.4);
+  border: 1px solid #4b5563;
 }
 
 /* SETTINGS */
@@ -430,8 +433,8 @@ body.playing {
 .setting-chip {
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(148,163,184,0.6);
-  background: rgba(15,23,42,0.95);
+  border: 1px solid #4b5563;
+  background: #020617;
   color: #e5e7eb;
   font-size: 12px;
 }

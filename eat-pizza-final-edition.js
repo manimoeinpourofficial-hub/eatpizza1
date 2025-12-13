@@ -1,6 +1,5 @@
 // ============================================
 //  Firebase Safe Mode (Compat v9.6.11)
-//  (Online only if config + internet OK)
 // ============================================
 let auth = null, db = null, firebaseReady = false;
 try {
@@ -24,18 +23,37 @@ let W = innerWidth, H = innerHeight;
 
 let p = { x: 0, y: 0, w: 0, h: 0, scale: 1, glow: false };
 let reds = [], obs = [], greens = [], blues = [], buffs = [], bullets = [], particles = [];
+let specialPizzas = []; // pizza44
 
 let score = 0, hs = +localStorage.getItem("hs") || 0, pc = +localStorage.getItem("pc") || 0;
 let ammo = 0, go = false, start = false, paused = false;
 let currentMode = "normal", gameSpeed = 1, spawnPressure = 1;
 let item = 40, bs = 20, zigzagIntensity = 1;
 
-let combo = 0, comboMul = 1, comboText = "", comboUntil = 0, lastPizzaTime = 0;
+// Hunger & miss & spawn modifiers
+let hunger = 50;       // 0..100
+let missCount = 0;
+const maxMiss = 5;
+
+let pizzasSinceLastBullet = 0;
 
 let slowMoUntil = 0, ultraSlowUntil = 0, ultraFastUntil = 0, ultraModeUntil = 0;
+let speedBoostUntil = 0;
+let specialSlowUntil = 0;
+
+let weedEffectUntil = 0, drugEffectUntil = 0;
+let pizzaSpawnMul = 1;
+
 let godMode = false, godUntil = 0, fever = false, feverUntil = 0;
 let shake = 0;
 let currentSkin = localStorage.getItem("skin") || "p";
+
+let combo = 0, comboMul = 1, comboText = "", comboUntil = 0, lastPizzaTime = 0;
+
+// Control type: "touch" | "tilt" | "both"
+let controlType = localStorage.getItem("controlType") || "touch";
+let tiltActive = false;
+let tiltBaseline = 0;
 
 // DOM refs
 const startMenu = document.getElementById("startMenu");
@@ -48,6 +66,7 @@ const hudScore = document.getElementById("hudScore");
 const hudHigh  = document.getElementById("hudHigh");
 const hudMode  = document.getElementById("hudMode");
 const hudPC    = document.getElementById("hudPC");
+const hudHunger = document.getElementById("hudHunger");
 const statusToast = document.getElementById("statusToast");
 const skinMenu = document.getElementById("skinMenu");
 const shopMenu = document.getElementById("shopMenu");
@@ -57,6 +76,7 @@ const challengeList = challengeMenu ? challengeMenu.querySelector("#challengeLis
 const weeklyMenu = document.getElementById("weeklyMenu");
 const weeklyList = weeklyMenu ? weeklyMenu.querySelector("#weeklyList") : null;
 const leaderboardMenu = document.getElementById("leaderboardMenu");
+const settingsMenu = document.getElementById("settingsMenu");
 
 // Profile DOM
 const profileMenu = document.getElementById("profileMenu");
@@ -110,12 +130,12 @@ const img = {
   pizzakhoor11: I("pizzakhoor11.png"),
   pizzakhoor12: I("pizzakhoor12.png"),
   r:   I("pizza1.png"),
-  g:   I("DRUG.png"),
-  b:   I("weed.webp"),
+  g:   I("DRUG.png"),      // drug
+  b:   I("weed.webp"),     // weed
   o:   I("shit.webp"),
   bu:  I("bullet.png"),
-  s:   I("speed.png"),
-  fever: I("pizza44.png"),
+  s:   I("speed.png"),     // speed item
+  fever: I("pizza44.png"), // special slow pizza
   bg:  I("pizzaback.jpg")
 };
 
@@ -174,6 +194,7 @@ function updateHUD() {
   hudHigh  && (hudHigh.textContent  = "High: "  + hs);
   hudPC    && (hudPC.textContent    = "PC: "    + pc);
   hudMode  && (hudMode.textContent  = "Mode: "  + currentMode.toUpperCase());
+  hudHunger && (hudHunger.textContent = "Hunger: " + hunger + "%");
 }
 
 function showToast(msg, dur = 2000) {
@@ -278,7 +299,7 @@ function updateShopUI() {
 }
 
 // ============================================
-//  Missions (Daily + Weekly, unified UI)
+//  Missions (Daily + Weekly)
 // ============================================
 const dailyMissions = [
   { id: "d1", title: "Collect 20 pizzas", goal: 20, progress: 0, reward: 25, type: "pizza" },
@@ -286,7 +307,6 @@ const dailyMissions = [
   { id: "d3", title: "Hit 5 obstacles",   goal: 5, progress: 0, reward: 40, type: "obstacle" }
 ];
 
-// Weekly: reset every Saturday
 const weeklyMissions = [
   { id: "w1", title: "Play 10 games",       goal: 10,  progress: 0, reward: 100, type: "games" },
   { id: "w2", title: "Reach 500 score",     goal: 500, progress: 0, reward: 150, type: "score" },
@@ -309,14 +329,12 @@ function loadMissions() {
     } catch {}
   }
 
-  // Weekly
+  // Weekly (by week number)
   const w = localStorage.getItem("weeklyMissions");
   const wLast = localStorage.getItem("weeklyReset");
   const now = new Date();
-  const day = now.getDay(); // 0=Sunday, 6=Saturday
   const currentWeekKey = now.getFullYear() + "-W" + getWeekNumber(now);
-  // reset if week changed OR last reset before this week's Saturday
-  if (wLast !== currentWeekKey || day === 6 && wLast !== currentWeekKey) {
+  if (wLast !== currentWeekKey) {
     weeklyMissions.forEach(m => m.progress = 0);
     localStorage.setItem("weeklyReset", currentWeekKey);
     saveMissions();
@@ -334,13 +352,10 @@ function getWeekNumber(d) {
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
   return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
 }
-
 function saveMissions() {
   localStorage.setItem("dailyMissions", JSON.stringify(dailyMissions));
   localStorage.setItem("weeklyMissions", JSON.stringify(weeklyMissions));
 }
-
-// unified UI builder
 function buildMissionList(container, missions, isWeekly) {
   if (!container) return;
   container.innerHTML = "";
@@ -366,14 +381,12 @@ function buildMissionList(container, missions, isWeekly) {
     container.appendChild(div);
   });
 }
-
 function updateChallengesUI() {
   buildMissionList(challengeList, dailyMissions, false);
 }
 function updateWeeklyUI() {
   buildMissionList(weeklyList, weeklyMissions, true);
 }
-
 function openChallengeMenu()  { challengeMenu && (challengeMenu.classList.remove("hidden"), updateChallengesUI()); }
 function closeChallengeMenu() { challengeMenu && challengeMenu.classList.add("hidden"); }
 function openWeeklyMenu()    { weeklyMenu && (weeklyMenu.classList.remove("hidden"), updateWeeklyUI()); }
@@ -507,9 +520,37 @@ function closeLeaderboard() {
 }
 
 // ============================================
+//  Settings (Control Type + Voice placeholder)
+// ============================================
+function openSettingsMenu() {
+  if (!settingsMenu) return;
+  settingsMenu.classList.remove("hidden");
+  updateSettingsUI();
+}
+function closeSettingsMenu() {
+  settingsMenu && settingsMenu.classList.add("hidden");
+}
+function updateSettingsUI() {
+  if (!settingsMenu) return;
+  const chips = settingsMenu.querySelectorAll(".setting-chip");
+  chips.forEach(chip => {
+    const mode = chip.dataset.control;
+    chip.classList.toggle("selected", mode === controlType);
+    chip.onclick = () => {
+      controlType = mode;
+      localStorage.setItem("controlType", controlType);
+      updateSettingsUI();
+      showToast(`Control: ${mode.toUpperCase()}`);
+      if (controlType === "tilt" || controlType === "both") enableTilt();
+    };
+  });
+}
+
+// ============================================
 //  Mode, Reset, Spawn
 // ============================================
 let nextRed = 0, nextObs = 0, nextGreen = 0, nextBlue = 0, nextBuff = 0;
+let nextSpecialPizza = 0;
 
 function applyMode(mode) {
   currentMode = mode;
@@ -521,10 +562,13 @@ function applyMode(mode) {
 
 function reset() {
   reds = []; obs = []; greens = []; blues = []; buffs = []; bullets = []; particles = [];
+  specialPizzas = [];
   score = 0; ammo = 0; go = false;
   combo = 0; comboMul = 1; comboText = ""; comboUntil = 0; shake = 0;
   slowMoUntil = 0; ultraSlowUntil = 0; ultraFastUntil = 0; ultraModeUntil = 0;
-  godMode = false; godUntil = 0; fever = false; feverUntil = 0;
+  speedBoostUntil = 0; specialSlowUntil = 0;
+  weedEffectUntil = 0; drugEffectUntil = 0; pizzaSpawnMul = 1;
+  missCount = 0; hunger = 50;
   applyMode(currentMode);
 
   if (localStorage.getItem("upg_ammo") === "1") ammo += 3;
@@ -532,6 +576,7 @@ function reset() {
 
   const now = Date.now();
   nextRed = now; nextObs = now; nextGreen = now + 2000; nextBlue = now + 3000; nextBuff = now + 4000;
+  nextSpecialPizza = now + 15000;
   updateHUD();
 }
 
@@ -562,6 +607,19 @@ function limitObjects() {
   if (greens.length > 4) greens.length = 4;
   if (blues.length > 4) blues.length = 4;
   if (buffs.length > 3) buffs.length = 3;
+  if (specialPizzas.length > 2) specialPizzas.length = 2;
+}
+
+// ============================================
+//  Player hitbox (fix skin size differences)
+// ============================================
+function playerHitbox() {
+  return {
+    x: p.x + p.w * 0.15,
+    y: p.y + p.h * 0.15,
+    w: p.w * 0.7,
+    h: p.h * 0.7
+  };
 }
 
 // ============================================
@@ -599,7 +657,8 @@ function activateFever() {
 function isPulledByUltra(r, effSp) {
   const now = Date.now();
   if (ultraModeUntil <= now) return false;
-  const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+  const hb = playerHitbox();
+  const cx = hb.x + hb.w / 2, cy = hb.y + hb.h / 2;
   const rx = r.x + r.w / 2, ry = r.y + r.h / 2;
   const dx = cx - rx, dy = cy - ry;
   const dist = Math.hypot(dx, dy);
@@ -607,26 +666,31 @@ function isPulledByUltra(r, effSp) {
   const pull = 0.25 * effSp;
   r.x += (dx / (dist || 1)) * pull;
   r.y += (dy / (dist || 1)) * pull;
-  return coll(p, r);
+  return coll(hb, r);
 }
 
 // ============================================
-//  Input
+//  Input (Touch + Tilt)
 // ============================================
 function move(mx) {
   p.x = Math.max(0, Math.min(mx - p.w / 2, W - p.w));
 }
+
+// Touch move
 addEventListener("mousemove", e => {
   if (!start || go || paused) return;
+  if (controlType === "tilt") return;
   const r = c.getBoundingClientRect();
   move(e.clientX - r.left);
 });
 addEventListener("touchmove", e => {
   if (!start || go || paused) return;
+  if (controlType === "tilt") return;
   const r = c.getBoundingClientRect(), t = e.touches[0];
   move(t.clientX - r.left);
 }, { passive: true });
 
+// Shooting
 let lastTap = 0, canShootKey = true;
 function shoot() {
   if (ammo <= 0) return;
@@ -651,6 +715,41 @@ addEventListener("keydown", e => {
 addEventListener("keyup", e => {
   if (e.code === "Space") canShootKey = true;
 });
+
+// Device Tilt
+function enableTilt() {
+  if (tiltActive) return;
+  tiltActive = true;
+
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    DeviceOrientationEvent.requestPermission()
+      .then(res => {
+        if (res === "granted") {
+          window.addEventListener("deviceorientation", handleTilt, true);
+          showToast("Tilt control ON");
+        } else {
+          showToast("Tilt permission denied");
+        }
+      })
+      .catch(() => showToast("Tilt not available"));
+  } else {
+    window.addEventListener("deviceorientation", handleTilt, true);
+  }
+}
+function handleTilt(e) {
+  if (!start || go || paused) return;
+  if (controlType === "touch") return;
+  const gamma = e.gamma; // -90 ~ 90
+  if (gamma == null) return;
+
+  if (tiltBaseline === 0) tiltBaseline = gamma;
+
+  const diff = gamma - tiltBaseline;
+  const tiltStrength = diff / 30;
+  const moveX = p.x + tiltStrength * 10;
+  p.x = Math.max(0, Math.min(moveX, W - p.w));
+}
 
 // ============================================
 //  Collision & particles
@@ -685,11 +784,17 @@ function upd() {
   const now = Date.now();
   updGod(now); updFever(now);
 
-  spawnPressure = 1 + Math.min(score / 1500, 2);
+  if (now > weedEffectUntil && now > drugEffectUntil) pizzaSpawnMul = 1;
+
+  spawnPressure = (1 + Math.min(score / 1500, 2)) * pizzaSpawnMul;
+
   let sp = gameSpeed, effSlow = 1;
   if (now < slowMoUntil) effSlow *= 0.7;
   if (now < ultraSlowUntil) effSlow *= 0.4;
+  if (now < specialSlowUntil) effSlow *= 0.4;
   if (now < ultraFastUntil) sp *= 1.5;
+  if (now < speedBoostUntil) sp *= 1.4;
+
   let effSp = sp * effSlow;
   const dt = 16;
 
@@ -701,28 +806,43 @@ function upd() {
   if (now > nextBlue  && Math.random() < 0.2) { blues.push(spawn("blue", item, item, 0.2));  nextBlue  = now + 8000; }
   if (now > nextBuff  && Math.random() < 0.25) { buffs.push(spawn("buff", item, item, 0.2)); nextBuff  = now + 9000; }
 
-  // reds
+  if (now > nextSpecialPizza && Math.random() < 0.5) {
+    specialPizzas.push(spawn("special", item, item, 0.2));
+    nextSpecialPizza = now + 20000 + Math.random() * 10000;
+  }
+
+  const ph = playerHitbox();
+
+  // reds (pizza)
   for (let i = reds.length - 1; i >= 0; i--) {
     const r = reds[i];
     r.y += 1.3 * effSp; applyZigzag(r, effSp);
-    const collected = coll(p, r) || isPulledByUltra(r, effSp);
+    const collected = coll(ph, r) || isPulledByUltra(r, effSp);
     if (collected) {
       handleCombo();
+
       let base = 5;
       if (fever) base *= 2;
       if (ultraModeUntil > now) base *= 1.5;
       score += Math.round(base * comboMul);
 
+      // PC gain
       let pcGain = 1;
       if (localStorage.getItem("upg_double") === "1") pcGain = 2;
       pc += pcGain; localStorage.setItem("pc", pc);
 
-      // Daily
+      // bullets: every 2 pizzas
+      pizzasSinceLastBullet++;
+      if (pizzasSinceLastBullet >= 2) {
+        pizzasSinceLastBullet = 0;
+        ammo++;
+      }
+
+      // missions
       dailyMissions.forEach(m => {
         if (m.type === "pizza" && m.progress >= 0) m.progress++;
         if (m.type === "score" && score >= m.goal && m.progress >= 0) m.progress = m.goal;
       });
-      // Weekly
       weeklyMissions.forEach(m => {
         if (m.type === "pizzaTotal" && m.progress >= 0) m.progress++;
         if (m.type === "score" && score >= m.goal && m.progress >= 0) m.progress = m.goal;
@@ -737,62 +857,82 @@ function upd() {
       p.scale = 1.2; setTimeout(() => p.scale = 1, 150);
       reds.splice(i, 1); playSound("pizza");
     } else if (r.y > H) {
-      reds.splice(i, 1); breakCombo();
+      reds.splice(i, 1);
+      breakCombo();
+      missCount++;
+      if (missCount >= maxMiss) {
+        go = true; playSound("gameOver");
+      }
     }
   }
 
-  // obs
+  // obs (shit)
   for (let i = obs.length - 1; i >= 0; i--) {
     const o = obs[i];
     o.y += 1.5 * effSp; applyZigzag(o, effSp);
-    if (coll(p, o)) {
-      if (!godMode && ultraModeUntil < now) {
-        go = true; playSound("gameOver");
-        spawnParticles(p.x + p.w / 2, p.y + p.h / 2, "red", 15); shake = 20;
-        // Weekly: games played
-        weeklyMissions.forEach(m => {
-          if (m.type === "games" && m.progress >= 0) m.progress++;
-        });
-      } else {
-        obs.splice(i, 1);
-        spawnParticles(o.x + o.w / 2, o.y + o.h / 2, "#00faff", 15); shake = 5;
-      }
-    } else if (o.y > H) obs.splice(i, 1);
+    if (coll(ph, o)) {
+      // برخورد با shit → مستقیم GameOver
+      go = true; playSound("gameOver");
+      spawnParticles(p.x + p.w / 2, p.y + p.h / 2, "red", 15); shake = 20;
+      weeklyMissions.forEach(m => {
+        if (m.type === "games" && m.progress >= 0) m.progress++;
+      });
+    } else if (o.y > H) {
+      obs.splice(i, 1);
+    }
   }
 
-  // greens
+  // greens (drug: less pizzas, hunger -30)
   for (let i = greens.length - 1; i >= 0; i--) {
     const g = greens[i];
     g.y += 1.1 * effSp; applyZigzag(g, effSp);
-    if (coll(p, g)) {
-      activateSlowMo(2000);
+    if (coll(ph, g)) {
+      const now2 = Date.now();
+      hunger = Math.max(0, hunger - 30);
+      pizzaSpawnMul = 0.7;
+      drugEffectUntil = now2 + 10000;
       greens.splice(i, 1);
       spawnParticles(g.x + g.w / 2, g.y + g.h / 2, "#00ff99", 8);
       playSound("drug");
     }
   }
 
-  // blues
+  // blues (weed: more pizzas, hunger +25)
   for (let i = blues.length - 1; i >= 0; i--) {
     const b = blues[i];
     b.y += 1.0 * effSp; applyZigzag(b, effSp);
-    if (coll(p, b)) {
-      activateGod(4000);
+    if (coll(ph, b)) {
+      const now2 = Date.now();
+      hunger = Math.min(100, hunger + 25);
+      pizzaSpawnMul = 1.25;
+      weedEffectUntil = now2 + 10000;
       blues.splice(i, 1);
       spawnParticles(b.x + b.w / 2, b.y + b.h / 2, "#00ccff", 8);
     }
   }
 
-  // buffs
+  // buffs (speed item)
   for (let i = buffs.length - 1; i >= 0; i--) {
     const bf = buffs[i];
     bf.y += 1.3 * effSp; applyZigzag(bf, effSp);
-    if (coll(p, bf)) {
-      if (Math.random() < 0.5) activateUltraFast(); else activateUltraSlow();
-      if (Math.random() < 0.3) activateFever();
+    if (coll(ph, bf)) {
+      const now2 = Date.now();
+      speedBoostUntil = now2 + 10000;
+      if (missCount > 0) missCount--;
       spawnParticles(bf.x + bf.w / 2, bf.y + bf.h / 2, "#ffcc00", 20);
       buffs.splice(i, 1);
     } else if (bf.y > H) buffs.splice(i, 1);
+  }
+
+  // special pizzas (pizza44 → slow 10s)
+  for (let i = specialPizzas.length - 1; i >= 0; i--) {
+    const s = specialPizzas[i];
+    s.y += 1.1 * effSp; applyZigzag(s, effSp);
+    if (coll(ph, s)) {
+      specialSlowUntil = now + 10000;
+      spawnParticles(s.x + s.w / 2, s.y + s.h / 2, "#ffffff", 12);
+      specialPizzas.splice(i, 1);
+    } else if (s.y > H) specialPizzas.splice(i, 1);
   }
 
   // bullets
@@ -807,7 +947,8 @@ function upd() {
         score += 3;
         dailyMissions.forEach(m => { if (m.type === "obstacle" && m.progress >= 0) m.progress++; });
         spawnParticles(o.x + o.w / 2, o.y + o.h / 2, "#ff6600", 12);
-        playSound("explode"); shake = 10;
+        playSound("explode"); // gooz1
+        shake = 10;
         break;
       }
     }
@@ -836,10 +977,10 @@ function draw() {
 
   if (!start) { x.restore(); return; }
 
-  if (now < ultraSlowUntil || now < slowMoUntil) {
+  if (now < ultraSlowUntil || now < slowMoUntil || now < specialSlowUntil) {
     x.fillStyle = "rgba(120,170,255,0.18)"; x.fillRect(0, 0, W, H);
   }
-  if (now < ultraFastUntil) {
+  if (now < ultraFastUntil || now < speedBoostUntil) {
     x.fillStyle = "rgba(255,220,130,0.16)"; x.fillRect(0, 0, W, H);
   }
   if (fever) {
@@ -865,6 +1006,7 @@ function draw() {
   blues.forEach(b0 => img.b.complete && x.drawImage(img.b, b0.x, b0.y, b0.w, b0.h));
   obs.forEach(o => img.o.complete && x.drawImage(img.o, o.x, o.y, o.w, o.h));
   buffs.forEach(bf => img.s.complete && x.drawImage(img.s, bf.x, bf.y, bf.w, bf.h));
+  specialPizzas.forEach(s => img.fever.complete && x.drawImage(img.fever, s.x, s.y, s.w, s.h));
 
   bullets.forEach(b => {
     if (b.img && b.img.complete) x.drawImage(b.img, b.x, b.y, b.w, b.h);
@@ -919,6 +1061,9 @@ function startGame() {
   }
   start = true; go = false; reset();
   startMenu && startMenu.classList.add("hidden");
+  document.body.classList.add("playing");
+  tiltBaseline = 0;
+  if (controlType === "tilt" || controlType === "both") enableTilt();
   if (soundOn) bg.play().catch(() => {});
 }
 function togglePause() {
@@ -929,6 +1074,7 @@ function togglePause() {
 function goToMainMenu() {
   start = false; go = false; paused = false;
   reset(); bg.pause();
+  document.body.classList.remove("playing");
   startMenu && startMenu.classList.remove("hidden");
   pauseMenu && pauseMenu.classList.add("hidden");
 }
@@ -939,8 +1085,12 @@ function toggleSound() {
   if (!soundOn) bg.pause(); else if (start) bg.play().catch(() => {});
 }
 
+// ============================================
+//  Init buttons & menus
+// ============================================
 playBtn && (playBtn.onclick = () => { startGame(); });
 pauseBtn && (pauseBtn.onclick = () => togglePause());
+
 modeChips.forEach(chip => {
   chip.onclick = () => {
     modeChips.forEach(c => c.classList.remove("selected"));
@@ -948,6 +1098,7 @@ modeChips.forEach(chip => {
     applyMode(chip.dataset.mode || "normal");
   };
 });
+
 menuTiles.forEach(btn => {
   btn.onclick = () => {
     const a = btn.dataset.action;
@@ -957,8 +1108,8 @@ menuTiles.forEach(btn => {
     else if (a === "weekly") openWeeklyMenu();
     else if (a === "profile") openProfileMenu();
     else if (a === "leaderboard") openLeaderboard();
-    else if (a === "voice") showToast("Voice coming soon");
-    else if (a === "settings") showToast("Settings soon");
+    else if (a === "voice") showToast("Voice reactions coming soon");
+    else if (a === "settings") openSettingsMenu();
   };
 });
 
@@ -1021,6 +1172,7 @@ function assetDone() {
       }
       startMenu && startMenu.classList.remove("hidden");
       updateSkinMenu(); updateShopUI(); loadMissions(); updateChallengesUI(); updateWeeklyUI(); updateHUD();
+      updateSettingsUI();
     }, 400);
   }
 }
@@ -1047,5 +1199,6 @@ window.openWeeklyMenu = openWeeklyMenu;
 window.closeWeeklyMenu = closeWeeklyMenu;
 window.openLeaderboard = openLeaderboard;
 window.closeLeaderboard = closeLeaderboard;
+window.closeSettingsMenu = closeSettingsMenu;
 
-console.log("✅ Eat Pizza Final Edition (Safe Mode) Loaded");
+console.log("✅ Eat Pizza Final Edition (Tilt + Hunger + Items) Loaded");

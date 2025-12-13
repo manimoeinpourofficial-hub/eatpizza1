@@ -51,11 +51,83 @@ let recognition = null;
 
 // Skins
 let currentSkin = localStorage.getItem("skin") || "p";
+
 const skins = {
-  p:   { id: "p",   name: "Default",  unlocked: true,        requireScore: 0,    price: 0   },
-  p11: { id: "p11", name: "Pizza 11", unlocked: hs >= 500,   requireScore: 500,  price: 250 },
-  p12: { id: "p12", name: "Pizza 12", unlocked: hs >= 1500,  requireScore: 1500, price: 400 }
+  p: {
+    id: "p",
+    name: "Default",
+    unlocked: true,
+    requireScore: 0,
+    price: 0
+  },
+  pizzakhoor11: {
+    id: "pizzakhoor11",
+    name: "Pizzakhoor 11",
+    unlocked: hs >= 500,
+    requireScore: 500,
+    price: 250
+  },
+  pizzakhoor12: {
+    id: "pizzakhoor12",
+    name: "Pizzakhoor 12",
+    unlocked: hs >= 1500,
+    requireScore: 1500,
+    price: 400
+  }
 };
+
+// Shop items (skins + upgrades)
+const shopItems = [
+  {
+    id: "skin_p11",
+    type: "skin",
+    skinId: "pizzakhoor11",
+    title: "Pizzakhoor 11",
+    desc: "Sharper crust, smoother moves.",
+    price: 250
+  },
+  {
+    id: "skin_p12",
+    type: "skin",
+    skinId: "pizzakhoor12",
+    title: "Pizzakhoor 12",
+    desc: "Elite slice for elite players.",
+    price: 400
+  },
+  {
+    id: "upg_slowmo",
+    type: "upgrade",
+    title: "SlowMo Boost",
+    desc: "Start each run with 3s slow motion.",
+    price: 150,
+    apply: () => {
+      localStorage.setItem("upg_slowmo", "1");
+    },
+    ownedKey: "upg_slowmo"
+  },
+  {
+    id: "upg_extra_ammo",
+    type: "upgrade",
+    title: "Extra Ammo Start",
+    desc: "Start each run with +3 ammo.",
+    price: 120,
+    apply: () => {
+      localStorage.setItem("upg_extra_ammo", "1");
+    },
+    ownedKey: "upg_extra_ammo"
+  },
+  {
+    id: "upg_double_pc",
+    type: "upgrade",
+    title: "Double PC",
+    desc: "Pizzas drop 2x PC forever.",
+    price: 500,
+    apply: () => {
+      localStorage.setItem("upg_double_pc", "1");
+    },
+    ownedKey: "upg_double_pc"
+  }
+];
 
 // Mode tuning
 let zigzagIntensity = 1;
@@ -80,6 +152,7 @@ const hudPC = document.getElementById("hudPC");
 const startMenu = document.getElementById("startMenu");
 const playBtn = document.getElementById("playBtn");
 const modeChips = document.querySelectorAll(".mode-chip");
+const menuTiles = document.querySelectorAll(".menu-tile");
 
 const loadingScreen = document.getElementById("loadingScreen");
 const loadingFill = document.getElementById("loadingFill");
@@ -118,7 +191,7 @@ let profile = JSON.parse(localStorage.getItem("profile") || "null");
 let pendingStartAfterProfile = false;
 
 // ---------------------------
-//  SOUND STATE
+//  SOUND STATE + HUD
 // ---------------------------
 function updateSoundStateText() {
   if (!soundStateSpan) return;
@@ -219,8 +292,8 @@ const I = s => { let i = new Image(); i.src = s; return i; };
 
 const img = {
   p:   I("PIZZA-KHOOR.png"),
-  p11: I("pizza11.png"),
-  p12: I("pizza12.png"),
+  pizzakhoor11: I("pizzakhoor11.png"),
+  pizzakhoor12: I("pizzakhoor12.png"),
   r:   I("pizza1.png"),
   g:   I("DRUG.png"),
   b:   I("weed.webp"),
@@ -232,10 +305,40 @@ const img = {
 };
 
 // ---------------------------
+//  BACKGROUND COVER
+// ---------------------------
+function drawBackgroundCover() {
+  if (!img.bg || !img.bg.complete) return;
+
+  const iw = img.bg.width;
+  const ih = img.bg.height;
+  if (!iw || !ih) return;
+
+  const cr = W / H;
+  const ir = iw / ih;
+
+  let dw, dh;
+  if (ir > cr) {
+    dh = H;
+    dw = ir * H;
+  } else {
+    dw = W;
+    dh = W / ir;
+  }
+  const dx = (W - dw) / 2;
+  const dy = (H - dh) / 2;
+
+  x.save();
+  x.globalAlpha = 0.25;
+  x.drawImage(img.bg, dx, dy, dw, dh);
+  x.restore();
+}
+
+// ---------------------------
 //  LOADING SYSTEM
 // ---------------------------
 const assetsToLoad = [
-  img.p, img.p11, img.p12,
+  img.p, img.pizzakhoor11, img.pizzakhoor12,
   img.r, img.g, img.b, img.o, img.bu, img.s, img.fever, img.bg,
   ...Object.values(sounds).flat().filter(a => a instanceof Audio),
   bg
@@ -311,18 +414,20 @@ if (playBtn) {
   });
 }
 
-document.querySelectorAll(".secondary-btn").forEach(btn => {
+menuTiles.forEach(btn => {
   btn.addEventListener("click", () => {
     const act = btn.dataset.action;
     if (!act) return;
-    if (act === "login") openProfileMenu();
+    if (act === "shop") openShopMenu();
     else if (act === "skins") openSkinMenu();
-    else if (act === "leaderboard") openLeaderboard();
-    else if (act === "settings") {/* reserved */}
-    else if (act === "shop") openShopMenu();
     else if (act === "daily") openChallengeMenu();
     else if (act === "weekly") openWeeklyMenu();
+    else if (act === "leaderboard") openLeaderboard();
+    else if (act === "profile") openProfileMenu();
     else if (act === "voice") toggleVoiceCheat();
+    else if (act === "settings") {
+      showToast("Settings coming soon");
+    }
   });
 });
 
@@ -394,8 +499,10 @@ if (closeProfileBtn) {
 // ---------------------------
 function updateSkinUnlockedState() {
   skins.p.unlocked = true;
-  skins.p11.unlocked = hs >= skins.p11.requireScore || skins.p11.price === 0 || skins.p11.unlocked;
-  skins.p12.unlocked = hs >= skins.p12.requireScore || skins.p12.price === 0 || skins.p12.unlocked;
+  skins.pizzakhoor11.unlocked =
+    hs >= skins.pizzakhoor11.requireScore || skins.pizzakhoor11.unlocked;
+  skins.pizzakhoor12.unlocked =
+    hs >= skins.pizzakhoor12.requireScore || skins.pizzakhoor12.unlocked;
 }
 
 function updateSkinMenu() {
@@ -458,7 +565,7 @@ function closeSkinMenu() {
 }
 
 // ---------------------------
-//  SHOP (فقط عکس اسکین‌ها)
+//  SHOP (Skins + Upgrades)
 // ---------------------------
 function openShopMenu() {
   if (!shopMenu || !shopList) return;
@@ -475,59 +582,88 @@ function updateShopUI() {
   if (!shopList) return;
   shopList.innerHTML = "";
 
-  Object.keys(skins).forEach(id => {
-    const s = skins[id];
-    if (id === "p") return; // default نمایش نده
-
+  shopItems.forEach(item => {
     const div = document.createElement("div");
     div.className = "shop-item";
 
-    const imgEl = document.createElement("img");
-    imgEl.src = img[id].src;
+    // تصویر
+    const imgEl = document.createElement("div");
     imgEl.className = "shop-item-img";
 
+    if (item.type === "skin") {
+      const imgTag = document.createElement("img");
+      imgTag.src = img[item.skinId].src;
+      imgTag.className = "shop-item-img-tag";
+      imgEl.appendChild(imgTag);
+    } else {
+      imgEl.innerHTML = `<span class="shop-icon">${item.title[0]}</span>`;
+    }
+
+    // متن
     const info = document.createElement("div");
     info.className = "shop-item-info";
     info.innerHTML = `
-      <div class="shop-item-title">${s.name}</div>
-      <div class="shop-item-sub">
-        ${s.unlocked ? "Unlocked" : `${s.price} PC`}
-      </div>
+      <div class="shop-item-title">${item.title}</div>
+      <div class="shop-item-sub">${item.desc}</div>
+      <div class="shop-item-price">${item.price} PC</div>
     `;
 
     const btn = document.createElement("button");
     btn.className = "shop-buy-btn";
 
-    if (s.unlocked) {
-      btn.textContent = currentSkin === id ? "Equipped" : "Equip";
-      btn.disabled = currentSkin === id;
+    let owned = false;
+    if (item.type === "skin") {
+      const sk = skins[item.skinId];
+      owned = sk && sk.unlocked;
+    } else if (item.type === "upgrade") {
+      owned = localStorage.getItem(item.ownedKey) === "1";
+    }
+
+    if (item.type === "skin") {
+      if (owned) {
+        btn.textContent = currentSkin === item.skinId ? "Equipped" : "Equip";
+      } else {
+        btn.textContent = "Buy";
+      }
     } else {
-      btn.textContent = "Buy";
-      btn.disabled = pc < s.price;
+      btn.textContent = owned ? "Owned" : "Buy";
+      btn.disabled = owned;
     }
 
     btn.addEventListener("click", () => {
-      if (s.unlocked) {
-        currentSkin = id;
+      if (item.type === "skin") {
+        const sk = skins[item.skinId];
+
+        if (!sk.unlocked) {
+          if (pc < item.price) {
+            showToast("PC کافی نیست");
+            return;
+          }
+          pc -= item.price;
+          localStorage.setItem("pc", pc);
+          updateHUDPC();
+
+          sk.unlocked = true;
+          showToast("اسکین باز شد!");
+        }
+
+        currentSkin = item.skinId;
         localStorage.setItem("skin", currentSkin);
-        updateShopUI();
         updateSkinMenu();
+        updateShopUI();
       } else {
-        if (pc < s.price) {
+        if (localStorage.getItem(item.ownedKey) === "1") return;
+        if (pc < item.price) {
           showToast("PC کافی نیست");
           return;
         }
-        pc -= s.price;
+        pc -= item.price;
         localStorage.setItem("pc", pc);
         updateHUDPC();
 
-        s.unlocked = true;
-        currentSkin = id;
-        localStorage.setItem("skin", currentSkin);
-
-        showToast("اسکین خریداری شد!");
+        item.apply();
+        showToast("خرید انجام شد!");
         updateShopUI();
-        updateSkinMenu();
       }
     });
 
@@ -541,6 +677,8 @@ function updateShopUI() {
 // ---------------------------
 //  INPUT + CHEATS
 // ---------------------------
+
+// حرکت پلیر
 function move(mx) {
   p.x = Math.max(0, Math.min(mx - p.w / 2, W - p.w));
 }
@@ -548,16 +686,22 @@ function move(mx) {
 // canvas فقط نمایش
 c.style.pointerEvents = "none";
 
+// Mouse
 addEventListener("mousemove", e => {
+  if (!start || go || paused) return;
   const rect = c.getBoundingClientRect();
   move(e.clientX - rect.left);
 });
+
+// Touch move
 addEventListener("touchmove", e => {
+  if (!start || go || paused) return;
   const rect = c.getBoundingClientRect();
   const t = e.touches[0];
   move(t.clientX - rect.left);
 }, { passive: true });
 
+// جلوگیری از شروع بازی با لمس روی منو
 let lastTapTime = 0;
 let inputTimes = [];
 let cheatBuffer = "";
@@ -584,6 +728,7 @@ function updateGodMode(now) {
   }
 }
 
+// cheat input counter
 function registerInputForCheat() {
   const now = Date.now();
   inputTimes.push(now);
@@ -595,42 +740,45 @@ function registerInputForCheat() {
   }
 }
 
+// Keyboard
+let canShootKeyboard = true;
+
 addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   cheatBuffer += k;
   if (cheatBuffer.length > 4) cheatBuffer = cheatBuffer.slice(-4);
+
   if (cheatBuffer === "anfo") {
     activateGodMode();
     cheatBuffer = "";
   }
+
+  if (e.code === "Space" && canShootKeyboard) {
+    canShootKeyboard = false;
+
+    if (!start || go || paused) return;
+    shootSingle();
+    registerInputForCheat();
+  }
+
+  if (e.code === "KeyP" && start && !go) togglePause();
 });
 
-// Swipe slowmo
-let swipeState = [];
+addEventListener("keyup", e => {
+  if (e.code === "Space") canShootKeyboard = true;
+});
+
+// Touch start (بدون startGame)
 let touchStartX = 0, touchStartY = 0;
 let touchActive = false;
 
-function addSwipeDir(dir) {
-  swipeState.push(dir);
-  if (swipeState.length > 4) swipeState = swipeState.slice(-4);
-  const pattern = swipeState.join("-");
-  if (pattern === "LR-DU-RL-UD") {
-    activateSlowMo();
-    swipeState = [];
-  }
-}
-
 addEventListener("touchstart", e => {
+  if (!start || go || paused) return;
+
   const rect = c.getBoundingClientRect();
   const t = e.touches[0];
   const x0 = t.clientX - rect.left;
   const y0 = t.clientY - rect.top;
-
-  if (!start) {
-    startGame();
-    return;
-  }
-  if (go) { reset(); return; }
 
   const now = Date.now();
   if (now - lastTapTime < 300) {
@@ -647,60 +795,8 @@ addEventListener("touchstart", e => {
 
 addEventListener("touchend", e => {
   if (!touchActive) return;
-  const rect = c.getBoundingClientRect();
-  const changed = e.changedTouches[0];
-  const x1 = changed.clientX - rect.left;
-  const y1 = changed.clientY - rect.top;
-
-  const dx = x1 - touchStartX;
-  const dy = y1 - touchStartY;
-  const absX = Math.abs(dx);
-  const absY = Math.abs(dy);
-  const minDist = 60;
-
-  if (absX < minDist && absY < minDist) {
-    touchActive = false;
-    return;
-  }
-
-  if (absX > absY) {
-    addSwipeDir(dx > 0 ? "LR" : "RL");
-  } else {
-    addSwipeDir(dy < 0 ? "DU" : "UD");
-  }
   touchActive = false;
-});
-
-// Space = shoot/start/reset
-let canShootKeyboard = true;
-
-addEventListener("keydown", e => {
-  if (e.code === "Space" && canShootKeyboard) {
-    canShootKeyboard = false;
-
-    if (!start) {
-      startGame();
-    } else if (go) {
-      reset();
-    } else {
-      shootSingle();
-    }
-    registerInputForCheat();
-  }
-
-  if (e.code === "KeyP" && start && !go) togglePause();
-});
-
-addEventListener("keyup", e => {
-  if (e.code === "Space") canShootKeyboard = true;
-});
-
-if (pauseBtn) {
-  pauseBtn.addEventListener("click", () => {
-    if (!start || go) return;
-    togglePause();
-  });
-}
+}, { passive: true });
 
 // ---------------------------
 //  SHOOTING
@@ -835,6 +931,14 @@ function reset() {
 
   applyMode(currentMode);
 
+  // آپگریدها
+  if (localStorage.getItem("upg_extra_ammo") === "1") {
+    ammo += 3;
+  }
+  if (localStorage.getItem("upg_slowmo") === "1") {
+    slowMoUntil = Date.now() + 3000;
+  }
+
   const now = Date.now();
   nextRed = now;
   nextObs = now;
@@ -871,7 +975,7 @@ function breakCombo() {
 }
 
 // ---------------------------
-//  ZIGZAG (فقط Hard)
+//  ZIGZAG (Hard Mode)
 // ---------------------------
 function applyZigzag(o, sp) {
   if (currentMode !== "hard") return;
@@ -892,7 +996,7 @@ function applyZigzag(o, sp) {
 }
 
 // ---------------------------
-//  FEVER (pizza44 → کندی)
+//  FEVER (pizza44)
 // ---------------------------
 function activateFever() {
   if (feverActive) return;
@@ -905,7 +1009,10 @@ function activateFever() {
 
   spawnParticles(p.x + p.w / 2, p.y, "#ffcc00", 40);
 
-  pc += 10;
+  let pcGain = 10;
+  if (localStorage.getItem("upg_double_pc") === "1") pcGain *= 2;
+
+  pc += pcGain;
   localStorage.setItem("pc", pc);
   updateHUDPC();
 }
@@ -939,7 +1046,6 @@ function spawn(type, w, h, chanceZig = 0.3) {
   };
 }
 
-// LIMIT
 function limitObjects() {
   const max = { red: 12, obs: 8, green: 4, blue: 4, buff: 3 };
   if (reds.length > max.red) reds.length = max.red;
@@ -947,212 +1053,6 @@ function limitObjects() {
   if (greens.length > max.green) greens.length = max.green;
   if (blues.length > max.blue) blues.length = max.blue;
   if (buffs.length > max.buff) buffs.length = max.buff;
-}
-
-// ---------------------------
-//  DAILY / WEEKLY
-// ---------------------------
-const dailyKey = "ep_daily_state_v1";
-const weeklyKey = "ep_weekly_state_v1";
-
-let dailyState = JSON.parse(localStorage.getItem(dailyKey) || "null");
-let weeklyState = JSON.parse(localStorage.getItem(weeklyKey) || "null");
-
-const dailyTemplate = [
-  { id: "d1", text: "Collect 30 pizzas", type: "pizzas", target: 30, rewardPC: 20 },
-  { id: "d2", text: "Reach 800 score",   type: "score",  target: 800, rewardPC: 15 },
-  { id: "d3", text: "Survive with <=2 miss", type: "lowMiss", target: 2, rewardPC: 10 }
-];
-
-const weeklyTemplate = [
-  { id: "w1", text: "Reach 2000 score",  type: "score",  target: 2000, rewardPC: 50 },
-  { id: "w2", text: "Collect 150 pizzas", type: "pizzas", target: 150, rewardPC: 40 },
-  { id: "w3", text: "Play 20 rounds",    type: "rounds", target: 20,  rewardPC: 60 }
-];
-
-function getDayStart(t) {
-  const d = new Date(t); d.setHours(0,0,0,0); return d.getTime();
-}
-function getWeekStart(t) {
-  const d = new Date(t);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0,0,0,0);
-  return d.getTime();
-}
-
-function resetDailyState() {
-  dailyState = {
-    ts: getDayStart(Date.now()),
-    data: dailyTemplate.map(ch => ({
-      id: ch.id,
-      type: ch.type,
-      text: ch.text,
-      target: ch.target,
-      rewardPC: ch.rewardPC,
-      progress: 0,
-      done: false
-    }))
-  };
-  localStorage.setItem(dailyKey, JSON.stringify(dailyState));
-}
-
-function resetWeeklyState() {
-  weeklyState = {
-    ts: getWeekStart(Date.now()),
-    data: weeklyTemplate.map(ch => ({
-      id: ch.id,
-      type: ch.type,
-      text: ch.text,
-      target: ch.target,
-      rewardPC: ch.rewardPC,
-      progress: 0,
-      done: false
-    }))
-  };
-  localStorage.setItem(weeklyKey, JSON.stringify(weeklyState));
-}
-
-(function initChallenges() {
-  const now = Date.now();
-  if (!dailyState || dailyState.ts !== getDayStart(now)) resetDailyState();
-  if (!weeklyState || weeklyState.ts !== getWeekStart(now)) resetWeeklyState();
-})();
-
-function updateChallengesOnPizzaCollect() {
-  if (!dailyState || !weeklyState) return;
-
-  dailyState.data.forEach(ch => {
-    if (ch.type === "pizzas" && !ch.done) {
-      ch.progress++;
-      if (ch.progress >= ch.target) {
-        ch.progress = ch.target;
-        ch.done = true;
-        pc += ch.rewardPC;
-        showToast("Daily Complete: +" + ch.rewardPC + " PC");
-      }
-    }
-  });
-
-  weeklyState.data.forEach(ch => {
-    if (ch.type === "pizzas" && !ch.done) {
-      ch.progress++;
-      if (ch.progress >= ch.target) {
-        ch.progress = ch.target;
-        ch.done = true;
-        pc += ch.rewardPC;
-        showToast("Weekly Complete: +" + ch.rewardPC + " PC");
-      }
-    }
-  });
-
-  localStorage.setItem(dailyKey, JSON.stringify(dailyState));
-  localStorage.setItem(weeklyKey, JSON.stringify(weeklyState));
-  localStorage.setItem("pc", pc);
-  updateHUDPC();
-}
-
-function updateChallengesOnScore(scoreNow) {
-  if (!dailyState || !weeklyState) return;
-
-  dailyState.data.forEach(ch => {
-    if (ch.type === "score" && !ch.done && scoreNow >= ch.target) {
-      ch.done = true;
-      ch.progress = ch.target;
-      pc += ch.rewardPC;
-      showToast("Daily Complete: +" + ch.rewardPC + " PC");
-    }
-  });
-
-  weeklyState.data.forEach(ch => {
-    if (ch.type === "score" && !ch.done && scoreNow >= ch.target) {
-      ch.done = true;
-      ch.progress = ch.target;
-      pc += ch.rewardPC;
-      showToast("Weekly Complete: +" + ch.rewardPC + " PC");
-    }
-  });
-
-  localStorage.setItem(dailyKey, JSON.stringify(dailyState));
-  localStorage.setItem(weeklyKey, JSON.stringify(weeklyState));
-  localStorage.setItem("pc", pc);
-  updateHUDPC();
-}
-
-function updateChallengesOnRoundEnd() {
-  if (!weeklyState) return;
-  weeklyState.data.forEach(ch => {
-    if (ch.type === "rounds" && !ch.done) {
-      ch.progress++;
-      if (ch.progress >= ch.target) {
-        ch.progress = ch.target;
-        ch.done = true;
-        pc += ch.rewardPC;
-        showToast("Weekly Complete: +" + ch.rewardPC + " PC");
-      }
-    }
-  });
-  localStorage.setItem(weeklyKey, JSON.stringify(weeklyState));
-  localStorage.setItem("pc", pc);
-  updateHUDPC();
-}
-
-function openChallengeMenu() {
-  if (!challengeMenu || !dailyState) return;
-  challengeMenu.classList.remove("hidden");
-  updateChallengesUI();
-}
-function closeChallengeMenu() {
-  if (!challengeMenu) return;
-  challengeMenu.classList.add("hidden");
-}
-
-function updateChallengesUI() {
-  if (!challengeList || !dailyState) return;
-  challengeList.innerHTML = "";
-  dailyState.data.forEach(ch => {
-    const percent = Math.floor((ch.progress / ch.target) * 100);
-    const div = document.createElement("div");
-    div.className = "challenge-item";
-    div.innerHTML = `
-      <div>${ch.text} ${ch.done ? "✅" : ""}</div>
-      <div class="challenge-sub">Reward: ${ch.rewardPC} PC</div>
-      <div class="challenge-progress">
-        <div class="challenge-progress-fill" style="width:${percent}%;"></div>
-      </div>
-    `;
-    challengeList.appendChild(div);
-  });
-}
-
-function openWeeklyMenu() {
-  if (!weeklyMenu || !weeklyState) return;
-  weeklyMenu.classList.remove("hidden");
-  updateWeeklyUI();
-}
-
-function closeWeeklyMenu() {
-  if (!weeklyMenu) return;
-  weeklyMenu.classList.add("hidden");
-}
-
-function updateWeeklyUI() {
-  if (!weeklyList || !weeklyState) return;
-  weeklyList.innerHTML = "";
-  weeklyState.data.forEach(ch => {
-    const percent = Math.floor((ch.progress / ch.target) * 100);
-    const div = document.createElement("div");
-    div.className = "weekly-item";
-    div.innerHTML = `
-      <div>${ch.text} ${ch.done ? "✅" : ""}</div>
-      <div class="challenge-sub">Reward: ${ch.rewardPC} PC</div>
-      <div class="weekly-progress">
-        <div class="weekly-progress-fill" style="width:${percent}%;"></div>
-      </div>
-    `;
-    weeklyList.appendChild(div);
-  });
 }
 
 // ---------------------------
@@ -1313,7 +1213,10 @@ function upd() {
 
       score += Math.round(base * comboMultiplier);
 
-      pc += 1;
+      let pcGain = 1;
+      if (localStorage.getItem("upg_double_pc") === "1") pcGain = 2;
+
+      pc += pcGain;
       localStorage.setItem("pc", pc);
       updateHUDPC();
 
@@ -1470,17 +1373,7 @@ function draw() {
   // BACKGROUND
   x.fillStyle = "#050505";
   x.fillRect(0, 0, W, H);
-
-  if (img.bg && img.bg.complete) {
-    const bgW = W * 0.7;
-    const bgH = H * 0.7;
-    const bgX = (W - bgW) / 2;
-    const bgY = (H - bgH) / 2;
-
-    x.globalAlpha = 0.22;
-    x.drawImage(img.bg, bgX, bgY, bgW, bgH);
-    x.globalAlpha = 1;
-  }
+  drawBackgroundCover();
 
   // SHAKE
   if (shake > 0) {
@@ -1640,12 +1533,14 @@ function renderFakeOnlinePlayers() {
       <div>${p.score}</div>
     `;
     onlinePlayersBar.appendChild(div);
+
   });
 }
 
 // ---------------------------
 //  FIREBASE ONLINE
 // ---------------------------
+
 auth.signInAnonymously()
   .then(() => {
     console.log("✅ Firebase Connected:", auth.currentUser.uid);

@@ -1,4 +1,6 @@
-/* RESET + NO SCROLL / NO ZOOM FEEL */
+/* ============================================
+   RESET + BASE
+============================================ */
 * {
   margin: 0;
   padding: 0;
@@ -9,23 +11,25 @@
 html, body {
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow: hidden;        /* هیچ اسکرولی */
 }
 
 body {
-  background: #020617; /* منو تیره */
+  background: #020617;     /* منو تیره */
   font-family: Arial, sans-serif;
   color: #fff;
   user-select: none;
-  touch-action: none;
+  touch-action: none;      /* جلوگیری از pinch / pan */
 }
 
-/* وقتی بازی درحال اجراست، پس‌زمینه سفید کمرنگ */
+/* وقتی بازی در حال اجراست (JS کلاس اضافه می‌کند) */
 body.playing {
-  background: #ffffff10 !important;
+  background: #ffffff10 !important; /* سفید با اوپسیتی کم */
 }
 
-/* CONTAINER */
+/* ============================================
+   GAME CONTAINER & CANVAS
+============================================ */
 #gameContainer {
   position: relative;
   width: 100vw;
@@ -36,13 +40,89 @@ body.playing {
 
 #gameCanvas {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
 }
 
-/* HUD */
+/* ============================================
+   LOADING (مرکز صفحه، تم مشکی/زرد)
+============================================ */
+#loadingScreen {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  transition: opacity .3s ease;
+}
+
+.loading-box {
+  position: relative;
+  width: 90%;
+  max-width: 320px;
+  background: #020617;
+  border: 1px solid #facc15;
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.7);
+}
+
+.logo {
+  font-size: 28px;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-bottom: 16px;
+}
+
+/* نوار لودینگ */
+.loading-bar {
+  width: 100%;
+  height: 10px;
+  background: #111827;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.loading-fill {
+  width: 0%;
+  height: 100%;
+  background: #facc15;
+  border-radius: 999px;
+  transition: width .25s linear;
+}
+
+.loading-percent {
+  font-size: 16px;
+  margin-top: 6px;
+}
+
+.loading-hint {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-top: 10px;
+}
+
+/* Canvas لودینگ (پیتزاهای در حال سقوط) */
+#loadingCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ============================================
+   HUD بالا
+============================================ */
 #hudTop {
   position: absolute;
   top: 8px;
@@ -51,13 +131,15 @@ body.playing {
   padding: 0 12px;
   display: flex;
   justify-content: space-between;
-  font-size: 3vw;
+  font-size: 3.5vw;
   z-index: 20;
   pointer-events: none;
 }
+
 #hudTop span {
   pointer-events: auto;
 }
+
 .top-stop-btn {
   background: #111827;
   border: 1px solid #facc15;
@@ -68,7 +150,9 @@ body.playing {
   pointer-events: auto;
 }
 
-/* Toast */
+/* ============================================
+   Toast
+============================================ */
 #statusToast {
   position: absolute;
   bottom: 40px;
@@ -87,7 +171,9 @@ body.playing {
   opacity: 1;
 }
 
-/* OVERLAYS / MODALS */
+/* ============================================
+   Overlays & Modals
+============================================ */
 .overlay,
 .modal,
 .start-overlay {
@@ -100,9 +186,11 @@ body.playing {
   z-index: 30;
 }
 
-.hidden { display: none !important; }
+.hidden {
+  display: none !important;
+}
 
-/* PANELS */
+/* پانل عمومی: استارت / مودال‌ها */
 .menu-box,
 .start-panel,
 .modal-content {
@@ -115,57 +203,25 @@ body.playing {
   border: 1px solid #1f2937;
 }
 
-/* LOADING (center, black/yellow) */
-.loading-box {
-  text-align: center;
-}
-.logo {
-  font-size: 32px;
-  margin-bottom: 4px;
-}
-.subtitle {
-  font-size: 14px;
-  opacity: 0.8;
-  margin-bottom: 16px;
-}
-.loading-bar {
-  width: 100%;
-  height: 10px;
-  background: #111827;
-  border-radius: 999px;
-  overflow: hidden;
-}
-.loading-fill {
-  height: 100%;
-  width: 0%;
-  background: #facc15;
-  border-radius: 999px;
-  transition: width 0.2s linear;
-}
-.loading-percent {
-  font-size: 16px;
-  margin-top: 6px;
-}
-.loading-hint {
-  font-size: 12px;
-  opacity: 0.8;
-  margin-top: 10px;
-}
-
-/* START MENU */
+/* ============================================
+   Start Menu
+============================================ */
 .start-panel {
   text-align: center;
 }
+
 .start-logo {
   font-size: 32px;
   font-weight: 800;
 }
+
 .start-subtitle {
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 4px;
   opacity: 0.8;
   margin-bottom: 16px;
 }
+
 .btn-play-main {
   margin: 12px 0 16px;
   padding: 10px 20px;
@@ -178,13 +234,14 @@ body.playing {
   width: 100%;
 }
 
-/* MODE ROW */
+/* Mode chips */
 .mode-row {
   display: flex;
   justify-content: center;
   gap: 8px;
   margin-bottom: 16px;
 }
+
 .mode-chip {
   padding: 6px 10px;
   border-radius: 999px;
@@ -193,18 +250,20 @@ body.playing {
   color: #e5e7eb;
   font-size: 12px;
 }
+
 .mode-chip.selected {
   background: #facc15;
   border-color: #facc15;
   color: #111827;
 }
 
-/* MENU GRID */
+/* Start menu grid (Shop, Skins, ...) */
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
+
 .menu-tile {
   padding: 10px;
   background: #020617;
@@ -214,11 +273,14 @@ body.playing {
   font-size: 13px;
 }
 
-/* PAUSE MENU */
+/* ============================================
+   Pause menu
+============================================ */
 .menu-box.small {
   max-width: 260px;
   text-align: center;
 }
+
 .menu-btn {
   margin-top: 10px;
   padding: 9px 12px;
@@ -229,13 +291,16 @@ body.playing {
   width: 100%;
   font-size: 14px;
 }
+
 .menu-btn.primary {
   background: #facc15;
   color: #111827;
 }
+
 .pause-settings {
   margin-top: 8px;
 }
+
 .setting-row {
   display: flex;
   justify-content: space-between;
@@ -243,6 +308,7 @@ body.playing {
   margin-top: 8px;
   font-size: 14px;
 }
+
 .toggle-chip {
   padding: 4px 10px;
   border-radius: 999px;
@@ -251,7 +317,9 @@ body.playing {
   color: #e5e7eb;
 }
 
-/* PROFILE */
+/* ============================================
+   Profile
+============================================ */
 .input {
   width: 100%;
   padding: 8px 10px;
@@ -262,12 +330,14 @@ body.playing {
   margin-top: 10px;
   font-size: 14px;
 }
+
 .avatar-row {
   display: flex;
   justify-content: center;
   gap: 10px;
   margin: 15px 0;
 }
+
 .avatar {
   width: 60px;
   height: 60px;
@@ -275,27 +345,33 @@ body.playing {
   overflow: hidden;
   border: 2px solid transparent;
 }
+
 .avatar.selected {
   border-color: #facc15;
 }
+
 .avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+
 .modal-actions {
   margin-top: 10px;
   display: flex;
   gap: 8px;
 }
 
-/* SKINS */
+/* ============================================
+   Skins
+============================================ */
 .skin-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
 }
+
 .skin-option {
   display: flex;
   align-items: center;
@@ -305,28 +381,35 @@ body.playing {
   border-radius: 12px;
   border: 1px solid #4b5563;
 }
+
 .skin-option.locked {
   opacity: 0.4;
 }
+
 .skin-option.selected {
   border-color: #facc15;
 }
+
 .skin-img {
   width: 48px;
   height: 48px;
   object-fit: contain;
 }
+
 .skin-label {
   font-size: 14px;
 }
 
-/* SHOP */
+/* ============================================
+   Shop
+============================================ */
 .shop-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
 }
+
 .shop-item {
   display: flex;
   align-items: center;
@@ -336,26 +419,32 @@ body.playing {
   border-radius: 12px;
   border: 1px solid #4b5563;
 }
+
 .shop-item-img-tag {
   width: 42px;
   height: 42px;
   object-fit: contain;
 }
+
 .shop-item-info {
   text-align: left;
   font-size: 13px;
 }
+
 .shop-item-title {
   font-weight: 600;
 }
+
 .shop-item-sub {
   font-size: 12px;
   opacity: 0.85;
 }
+
 .shop-item-price {
   font-size: 12px;
   margin-top: 2px;
 }
+
 .shop-buy-btn {
   margin-left: auto;
   padding: 6px 10px;
@@ -366,7 +455,9 @@ body.playing {
   font-size: 13px;
 }
 
-/* MISSIONS */
+/* ============================================
+   Missions (Daily + Weekly)
+============================================ */
 .mission-item {
   background: #020617;
   padding: 10px;
@@ -375,14 +466,17 @@ body.playing {
   text-align: left;
   border: 1px solid #4b5563;
 }
+
 .mission-item.completed {
   background: rgba(234,179,8,0.16);
   border-color: #facc15;
 }
+
 .mission-title {
   font-size: 14px;
   margin-bottom: 6px;
 }
+
 .mission-bar {
   width: 100%;
   height: 6px;
@@ -390,23 +484,28 @@ body.playing {
   border-radius: 999px;
   margin-bottom: 6px;
 }
+
 .mission-fill {
   height: 100%;
   background: #facc15;
   border-radius: 999px;
 }
+
 .mission-info {
   font-size: 12px;
   opacity: 0.85;
 }
 
-/* LEADERBOARD */
+/* ============================================
+   Leaderboard
+============================================ */
 .leaderboard-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 10px;
 }
+
 .leaderboard-item {
   background: #020617;
   padding: 8px 10px;
@@ -415,21 +514,26 @@ body.playing {
   border: 1px solid #4b5563;
 }
 
-/* SETTINGS */
+/* ============================================
+   Settings modal
+============================================ */
 .setting-block {
   text-align: left;
   margin-top: 12px;
 }
+
 .setting-label {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
 }
+
 .setting-options {
   display: flex;
   gap: 8px;
   margin-bottom: 6px;
 }
+
 .setting-chip {
   padding: 6px 10px;
   border-radius: 999px;
@@ -438,24 +542,34 @@ body.playing {
   color: #e5e7eb;
   font-size: 12px;
 }
+
 .setting-chip.selected {
   background: #facc15;
   border-color: #facc15;
   color: #111827;
 }
+
 .setting-help {
   font-size: 12px;
   opacity: 0.8;
 }
 
-/* RESPONSIVE TUNING */
-@media (min-width: 768px) {
+/* ============================================
+   Responsive tweaks
+============================================ */
+@media (min-width: 600px) {
   #hudTop {
-    font-size: 14px;
+    font-size: 16px;
   }
+
+  .loading-box {
+    max-width: 360px;
+  }
+
   .start-panel {
     max-width: 380px;
   }
+
   .menu-grid {
     gap: 10px;
   }

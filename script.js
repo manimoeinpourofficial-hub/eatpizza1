@@ -1041,6 +1041,20 @@ function draw() {
 }
 
 // ---------------------------
+//  PARTICLES
+// ---------------------------
+function updParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p0 = particles[i];
+    p0.x += p0.vx;
+    p0.y += p0.vy;
+    p0.life -= dt;
+    p0.vy += 0.05;
+    if (p0.life <= 0) particles.splice(i, 1);
+  }
+}
+
+// ---------------------------
 //  LOOP
 // ---------------------------
 (function loop() {
@@ -1051,14 +1065,3 @@ function draw() {
 
 applyMode("normal");
 reset();
-
-// ---------------------------
-//  FIREBASE
-// ---------------------------
-auth.signInAnonymously()
-  .then(() => {
-    console.log("✅ Firebase Connected:", auth.currentUser.uid);
-  })
-  .catch(err => {
-    console.error("❌ Firebase Error:", err);
-  });

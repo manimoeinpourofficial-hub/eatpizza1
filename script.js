@@ -31,10 +31,10 @@ let paused = false;
 let currentMode = "normal";
 let soundOn = true;
 
-// SlowMo (چیت دوم اولیه، نگه می‌داریم)
+// SlowMo (چیت موبایل و قدیمی)
 let slowMoUntil = 0;
 
-// God Mode (چیت جدید ضد ضربه)
+// God Mode (چیت ضد ضربه)
 let godMode = false;
 let godModeUntil = 0;
 
@@ -87,7 +87,7 @@ function updateSoundStateText() {
 updateSoundStateText();
 
 // ---------------------------
-//  AUDIO (preload list)
+//  AUDIO
 // ---------------------------
 const makeAudio = src => {
   let a = new Audio(src);
@@ -108,27 +108,24 @@ const bg = makeAudio("background.mp3");
 bg.loop = true;
 bg.volume = 0.3;
 
-let queue = [], playing = false, cool = {};
+let cool = {};
 
-function playSound(n) {
+function playSound(name) {
   if (!start || !soundOn) return;
-
   const now = Date.now();
-  if (now - (cool[n] || 0) < 120) return; // کمی کوتاه‌تر که هیجان بیشتر بشه
-  cool[n] = now;
+  if (now - (cool[name] || 0) < 120) return;  // جلوگیری از اسپم زیاد
+  cool[name] = now;
 
-  const s = sounds[n];
+  const s = sounds[name];
   if (!s) return;
-
-  let baseAudio = Array.isArray(s) ? s[(Math.random() * s.length) | 0] : s;
-  // برای اینکه حتی اگر در حال پخش است، دوباره بشنوی، از cloneNode استفاده کن:
-  const a = baseAudio.cloneNode();
+  const base = Array.isArray(s) ? s[(Math.random() * s.length) | 0] : s;
+  const a = base.cloneNode();
   a.currentTime = 0;
   a.play().catch(() => {});
 }
 
+// صدای برخورد (shit) که همیشه باید پلی بشه
 function playHitSound() {
-  // شیت / برخورد تیر / هرچی: این یکی همیشه باید شنیده بشه
   const base = sounds.shit;
   if (!base) return;
   const a = base.cloneNode();
@@ -170,7 +167,7 @@ const img = {
   o: I("shit.webp"),
   bu: I("bullet.png"),
   s: I("speed.png"),
-  fever: I("pizza44.png") // برای آینده: آیتم Fever Mode
+  fever: I("pizza44.png") // آیتم Fever
 };
 
 // ---------------------------
@@ -210,6 +207,7 @@ assetsToLoad.forEach(asset => {
   }
 });
 
+// fallback
 setTimeout(() => {
   if (loadingScreen.style.display !== "none") {
     loadingFill.style.width = "100%";
@@ -237,7 +235,7 @@ document.querySelectorAll(".menu-btn").forEach(btn => {
     if (act === "login") {
       openProfileMenu();
     } else if (act === "modes") {
-      // بعداً Mode جدا
+      // بعداً
     } else if (act === "leaderboard") {
       // بعداً
     } else if (act === "settings") {
@@ -315,7 +313,7 @@ c.addEventListener("touchmove", e => {
   move(e.touches[0].clientX - rect.left);
 }, { passive: true });
 
-// دابل‌تپ برای شلیک روی موبایل
+// دابل‌تپ برای شلیک موبایل
 let lastTapTime = 0;
 
 // CHEAT 1: 20 input → +30 ammo
@@ -332,7 +330,7 @@ function registerInputForCheat() {
   }
 }
 
-// SlowMo چیت قدیمی
+// SlowMo (چیت قدیمی)
 let cheatBuffer = "";
 
 function activateSlowMo() {
@@ -340,7 +338,7 @@ function activateSlowMo() {
   spawnParticles(p.x + p.w / 2, p.y, "#88ddff", 40);
 }
 
-// GodMode چیت جدید (ضد ضربه + افکت نور)
+// God Mode (چیت جدید با افکت نور)
 function activateGodMode(duration = 8000) {
   godMode = true;
   godModeUntil = Date.now() + duration;
@@ -356,19 +354,18 @@ function updateGodMode(now) {
   }
 }
 
-// تبدیل cheat ANFO از SlowMo به GodMode:
+// تبدیل cheat ANFO به گاد مود
 addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   cheatBuffer += k;
   if (cheatBuffer.length > 4) cheatBuffer = cheatBuffer.slice(-4);
-
   if (cheatBuffer === "anfo") {
     activateGodMode();
     cheatBuffer = "";
   }
 });
 
-// CHEAT 3 MOBILE: Swipe pattern → SlowMo (فعلاً نگه می‌داریم)
+// CHEAT 3 MOBILE: Swipe pattern → SlowMo
 let swipeState = [];
 let touchStartX = 0, touchStartY = 0;
 let touchActive = false;
@@ -436,7 +433,7 @@ c.addEventListener("touchend", e => {
   touchActive = false;
 });
 
-// شلیک تک‌تیر (کیبورد – نگه داشتن Space اسپم نمی‌کند)
+// شلیک تک‌تیر با کیبورد (Space)
 let canShootKeyboard = true;
 
 addEventListener("keydown", e => {
@@ -460,9 +457,7 @@ addEventListener("keydown", e => {
 });
 
 addEventListener("keyup", e => {
-  if (e.code === "Space") {
-    canShootKeyboard = true;
-  }
+  if (e.code === "Space") canShootKeyboard = true;
 });
 
 // دکمه Pause موبایل
@@ -487,44 +482,15 @@ function shootSingle() {
     s: 12,
     img: img.bu
   });
-  // صدای شلیک اگر بعداً اضافه شد می‌تونی اینجا playSound("...") بزنی
+  // اگر خواستی صدای تیر اضافه کنی: playSound("explode") یا جدا بساز
 }
 
-// ---------------------------
-//  COLLISION
-// ---------------------------
+// Collision helper
 const coll = (a, b) =>
   a.x < b.x + b.w &&
   a.x + a.w > b.x &&
   a.y < b.y + b.h &&
   a.y + a.h > b.y;
-
-// ---------------------------
-//  PARTICLES
-// ---------------------------
-function spawnParticles(x0, y0, color, count = 6) {
-  for (let i = 0; i < count; i++) {
-    particles.push({
-      x: x0,
-      y: y0,
-      vx: (Math.random() - 0.5) * 3,
-      vy: (Math.random() - 0.5) * 3 - 1,
-      life: 400,
-      color
-    });
-  }
-}
-
-function updParticles(dt) {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p0 = particles[i];
-    p0.x += p0.vx;
-    p0.y += p0.vy;
-    p0.life -= dt;
-    p0.vy += 0.05;
-    if (p0.life <= 0) particles.splice(i, 1);
-  }
-}
 
 // ---------------------------
 //  MODE
@@ -552,6 +518,7 @@ let nextObs = 0;
 let nextGreen = 0;
 let nextBlue = 0;
 let nextBuff = 0;
+let nextFever = 0;
 
 function reset() {
   reds = [];
@@ -579,6 +546,7 @@ function reset() {
   slowMoUntil = 0;
   godMode = false;
   p.glow = false;
+
   feverActive = false;
   feverUntil = 0;
 
@@ -590,118 +558,8 @@ function reset() {
   nextGreen = now + 2000;
   nextBlue = now + 3000;
   nextBuff = now + 4000;
+  nextFever = now + 5000;
 }
-
-// ---------------------------
-//  PAUSE / SETTINGS
-// ---------------------------
-function showPauseMenu() {
-  if (pauseMenu) pauseMenu.classList.remove("hidden");
-}
-function hidePauseMenu() {
-  if (pauseMenu) pauseMenu.classList.add("hidden");
-}
-
-function togglePause() {
-  if (paused) {
-    paused = false;
-    hidePauseMenu();
-    if (soundOn && start && !go) bg.play();
-  } else {
-    paused = true;
-    showPauseMenu();
-    bg.pause();
-    if (pauseMain && pauseSettings && pauseTitle) {
-      pauseMain.style.display = "block";
-      pauseSettings.style.display = "none";
-      pauseTitle.textContent = "Paused";
-    }
-  }
-}
-
-if (pauseMenu) {
-  pauseMenu.addEventListener("click", e => {
-    const btn = e.target.closest("button");
-    if (!btn) return;
-
-    const act = btn.getAttribute("data-action");
-
-    if (act === "resume") {
-      togglePause();
-    } else if (act === "restart") {
-      reset();
-      togglePause();
-    } else if (act === "modeEasy") {
-      applyMode("easy");
-      reset();
-      togglePause();
-    } else if (act === "modeNormal") {
-      applyMode("normal");
-      reset();
-      togglePause();
-    } else if (act === "modeHard") {
-      applyMode("hard");
-      reset();
-      togglePause();
-    } else if (act === "quit") {
-      reset();
-      start = false;
-      paused = false;
-      hidePauseMenu();
-      bg.pause();
-      if (startMenu) startMenu.classList.remove("hidden");
-    } else if (act === "settings") {
-      if (pauseMain && pauseSettings && pauseTitle) {
-        pauseMain.style.display = "none";
-        pauseSettings.style.display = "block";
-        pauseTitle.textContent = "Settings";
-      }
-    } else if (act === "backFromSettings") {
-      if (pauseMain && pauseSettings && pauseTitle) {
-        pauseSettings.style.display = "none";
-        pauseMain.style.display = "block";
-        pauseTitle.textContent = "Paused";
-      }
-    } else if (act === "toggleSound") {
-      soundOn = !soundOn;
-      updateSoundStateText();
-      if (!soundOn) bg.pause();
-      else if (start && !go && !paused) bg.play();
-    }
-  });
-}
-
-// ---------------------------
-//  SPAWN SYSTEM
-// ---------------------------
-function spawn(type, w, h, chanceZig = 0.3) {
-  const zig = Math.random() < chanceZig;
-  return {
-    x: Math.random() * (W - w),
-    y: -h,
-    w,
-    h,
-    zigzag: zig,
-    dir: Math.random() < 0.5 ? -1 : 1,
-    amp: 15 + Math.random() * 50,   // کمی متنوع‌تر
-    t: Math.random() * Math.PI * 2,
-    baseX: null,
-    tType: type,
-    zigSpeed: 0.05 + Math.random() * 0.07  // سرعت متفاوت زیگزاگ
-  };
-}
-
-// ---------------------------
-//  HARDER OVER TIME
-// ---------------------------
-setInterval(() => {
-  if (start && !go && !paused) {
-    if (currentMode === "easy") gameSpeed += 0.003;
-    else if (currentMode === "normal") gameSpeed += 0.007;
-    else gameSpeed += 0.015;
-    if (gameSpeed > 3) gameSpeed = 3;
-  }
-}, 4000);
 
 // ---------------------------
 //  COMBO
@@ -728,14 +586,23 @@ function breakCombo() {
 }
 
 // ---------------------------
-//  ZIGZAG (بهبود‌یافته)
+//  ZIGZAG (نسخه جذاب‌تر)
 // ---------------------------
 function applyZigzag(o, sp) {
   if (!o.zigzag) return;
+
   if (o.baseX == null) o.baseX = o.x;
-  const zsp = o.zigSpeed || 0.08;
-  o.t += zsp * sp;
-  o.x = o.baseX + Math.sin(o.t) * o.amp * o.dir;
+
+  o.t += (o.zigSpeed || 0.05) * sp;
+
+  const wave = Math.sin(o.t) * o.amp * o.dir;
+  const noise = Math.sin(o.t * 0.3) * 5;
+
+  o.x = o.baseX + wave + noise;
+
+  if (Math.random() < 0.005) {
+    o.dir *= -1;
+  }
 }
 
 // ---------------------------
@@ -743,22 +610,61 @@ function applyZigzag(o, sp) {
 // ---------------------------
 function activateFever() {
   if (feverActive) return;
+
   feverActive = true;
-  feverUntil = Date.now() + 7000; // 7 ثانیه
-  gameSpeed *= 1.2;
-  comboMultiplier *= 2; // توی Fever کامبو قوی‌تر
+  feverUntil = Date.now() + 7000;
+
+  gameSpeed *= 1.25;
+  comboMultiplier *= 2;
+
   bg.playbackRate = 1.3;
+
+  spawnParticles(p.x + p.w / 2, p.y, "#ffcc00", 40);
 }
 
 function updateFever(now) {
   if (!feverActive) return;
+
   if (now > feverUntil) {
     feverActive = false;
-    gameSpeed /= 1.2;
+    gameSpeed /= 1.25;
     comboMultiplier = 1;
     bg.playbackRate = 1;
   }
 }
+
+// ---------------------------
+//  SPAWN SYSTEM
+// ---------------------------
+function spawn(type, w, h, chanceZig = 0.3) {
+  const zig = Math.random() < chanceZig;
+  return {
+    x: Math.random() * (W - w),
+    y: -h,
+    w,
+    h,
+    zigzag: zig,
+    dir: Math.random() < 0.5 ? -1 : 1,
+    amp: 15 + Math.random() * 50,
+    t: Math.random() * Math.PI * 2,
+    baseX: null,
+    tType: type,
+    zigSpeed: 0.05 + Math.random() * 0.07
+  };
+}
+
+// ---------------------------
+//  HARDER OVER TIME
+// ---------------------------
+setInterval(() => {
+  if (start && !go && !paused) {
+    if (currentMode === "easy") gameSpeed += 0.003;
+    else if (currentMode === "normal") gameSpeed += 0.007;
+    else gameSpeed += 0.015;
+
+    if (gameSpeed > 3) gameSpeed = 3;
+  }
+}, 4000);
 
 // ---------------------------
 //  UPDATE
@@ -768,30 +674,31 @@ function upd() {
 
   const now = Date.now();
 
-  // زمان‌بندی حالت‌ها
   updateGodMode(now);
   updateFever(now);
 
   let sp = gameSpeed;
-  let slowFactor = 1;
-  if (now < slowMoUntil) {
-    slowFactor = 0.5;
-  }
+  let slowFactor = now < slowMoUntil ? 0.5 : 1;
 
-  // اگر Speed Buff فعاله، کمی تقویت
-  if (now < speedBoostUntil) {
-    sp *= 1.3;
-  }
+  if (now < speedBoostUntil) sp *= 1.3;
 
   let effSp = sp * slowFactor;
   const dt = 16;
 
-  // اسپان‌ها بر اساس زمان
+  // ✅ محدود کردن تعداد آبجکت‌ها
+  reds = reds.slice(-20);
+  obs = obs.slice(-15);
+  greens = greens.slice(-8);
+  blues = blues.slice(-8);
+  buffs = buffs.slice(-8);
+
+  // ✅ اسپاون پیتزا
   if (now > nextRed) {
     reds.push(spawn("red", item, item));
     nextRed = now + 1700 / effSp;
   }
 
+  // ✅ اسپاون مانع
   if (now > nextObs) {
     if (Math.random() < 0.7) {
       obs.push(spawn("obs", item * 0.8, item * 0.8));
@@ -799,22 +706,33 @@ function upd() {
     nextObs = now + 4000 / effSp;
   }
 
+  // ✅ اسپاون سبز
   if (now > nextGreen && Math.random() < 0.2) {
     greens.push(spawn("green", item, item, 0.25));
     nextGreen = now + 6000;
   }
 
+  // ✅ اسپاون آبی
   if (now > nextBlue && Math.random() < 0.2) {
     blues.push(spawn("blue", item, item, 0.25));
     nextBlue = now + 8000;
   }
 
+  // ✅ اسپاون speed buff
   if (now > nextBuff && Math.random() < 0.25) {
     buffs.push(spawn("speed", item, item, 0.25));
     nextBuff = now + 9000;
   }
 
-  // Reds (pizza)
+  // ✅ اسپاون FEVER (pizza44)
+  if (now > nextFever && Math.random() < 0.15) {
+    buffs.push(spawn("fever", item, item, 0.25));
+    nextFever = now + 15000;
+  }
+
+  // ---------------------------
+  //  REDS (PIZZA)
+  // ---------------------------
   for (let i = reds.length - 1; i >= 0; i--) {
     const r = reds[i];
     r.y += 1.3 * effSp;
@@ -822,11 +740,12 @@ function upd() {
 
     if (coll(p, r)) {
       handleComboPizzaTake();
+
       let base = 5;
       if (now < slowMoUntil) base *= 1.2;
       if (feverActive) base *= 2;
-      let gained = base * comboMultiplier;
-      score += Math.round(gained);
+
+      score += Math.round(base * comboMultiplier);
 
       if (score > hs) {
         hs = score;
@@ -837,21 +756,18 @@ function upd() {
       if (pizzaCount % 2 === 0) ammo++;
 
       spawnParticles(r.x + r.w / 2, r.y + r.h / 2, "orange", 10);
+
       p.scale = 1.2;
       setTimeout(() => p.scale = 1, 150);
 
       reds.splice(i, 1);
       playSound("pizza");
 
-      // اگر خواستی: روی کامبو بالا Fever فعال کن
-      if (combo >= 10 && !feverActive) {
-        activateFever();
-      }
-
     } else if (r.y > H) {
       reds.splice(i, 1);
       miss++;
       breakCombo();
+
       if (miss >= (currentMode === "easy" ? 6 : 3)) {
         go = true;
         playSound("gameOver");
@@ -860,7 +776,9 @@ function upd() {
     }
   }
 
-  // Obstacles
+  // ---------------------------
+  //  OBSTACLES
+  // ---------------------------
   for (let i = obs.length - 1; i >= 0; i--) {
     const o = obs[i];
     o.y += 1.5 * effSp;
@@ -873,7 +791,6 @@ function upd() {
         spawnParticles(p.x + p.w / 2, p.y + p.h / 2, "red", 15);
         shake = 20;
       } else {
-        // در God Mode دشمن نابود میشه ولی تو نمی‌میری
         obs.splice(i, 1);
         spawnParticles(o.x + o.w / 2, o.y + o.h / 2, "#00faff", 15);
         shake = 5;
@@ -883,7 +800,9 @@ function upd() {
     }
   }
 
-  // Greens
+  // ---------------------------
+  //  GREENS
+  // ---------------------------
   for (let i = greens.length - 1; i >= 0; i--) {
     const g = greens[i];
     g.y += 1.1 * effSp;
@@ -898,7 +817,9 @@ function upd() {
     }
   }
 
-  // Blues
+  // ---------------------------
+  //  BLUES
+  // ---------------------------
   for (let i = blues.length - 1; i >= 0; i--) {
     const b = blues[i];
     b.y += 1.0 * effSp;
@@ -909,32 +830,44 @@ function upd() {
       prob = Math.min(1, prob * 1.1);
       blues.splice(i, 1);
       spawnParticles(b.x + b.w / 2, b.y + b.h / 2, "#00ccff", 8);
-      //playSound("weed");
     }
   }
 
-  // Buffs (speed / در آینده fever)
+  // ---------------------------
+  //  BUFFS (speed + fever)
+  // ---------------------------
   for (let i = buffs.length - 1; i >= 0; i--) {
     const bf = buffs[i];
     bf.y += 1.3 * effSp;
     applyZigzag(bf, effSp);
 
     if (coll(p, bf)) {
+
       if (bf.tType === "speed") {
         speedBoostUntil = now + 10000;
         if (miss > 0) miss--;
         spawnParticles(bf.x + bf.w / 2, bf.y + bf.h / 2, "yellow", 10);
       }
+
+      if (bf.tType === "fever") {
+        activateFever();
+        spawnParticles(bf.x + bf.w / 2, bf.y + bf.h / 2, "#ffcc00", 20);
+      }
+
       buffs.splice(i, 1);
+
     } else if (bf.y > H) {
       buffs.splice(i, 1);
     }
   }
 
-  // Bullets
+  // ---------------------------
+  //  BULLETS
+  // ---------------------------
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     b.y -= b.s;
+
     if (b.y + b.h < 0) {
       bullets.splice(i, 1);
       continue;
@@ -958,7 +891,7 @@ function upd() {
 
   if (combo > 0 && now - lastPizzaTime > 2500) breakCombo();
 
-  // HUD update (بهینه: یکجا)
+  // HUD update
   if (hudScore) hudScore.textContent = "Score: " + score;
   if (hudHigh) hudHigh.textContent = "High: " + hs;
   if (hudAmmo) hudAmmo.textContent = "Ammo: " + ammo;
@@ -978,6 +911,7 @@ function draw() {
   const now = Date.now();
   const inSlowMo = now < slowMoUntil;
 
+  // Screen shake
   if (shake > 0) {
     x.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     shake *= 0.9;
@@ -991,21 +925,26 @@ function draw() {
     return;
   }
 
+  // SlowMo overlay
   if (inSlowMo) {
     x.fillStyle = "rgba(100,150,255,0.08)";
     x.fillRect(0, 0, W, H);
   }
 
+  // Fever overlay
   if (feverActive) {
     x.fillStyle = "rgba(255, 220, 80, 0.12)";
     x.fillRect(0, 0, W, H);
   }
 
-  // Player
+  // ---------------------------
+  //  PLAYER
+  // ---------------------------
   x.save();
   x.translate(p.x + p.w / 2, p.y + p.h / 2);
   x.scale(p.scale || 1, p.scale || 1);
 
+  // Glow effect (God Mode)
   if (p.glow) {
     const grd = x.createRadialGradient(0, 0, p.w * 0.3, 0, 0, p.w);
     grd.addColorStop(0, "rgba(0,250,255,0.8)");
@@ -1019,21 +958,31 @@ function draw() {
   x.drawImage(img.p, -p.w / 2, -p.h / 2, p.w, p.h);
   x.restore();
 
-  // Objects
+  // ---------------------------
+  //  OBJECTS
+  // ---------------------------
   reds.forEach(r => x.drawImage(img.r, r.x, r.y, r.w, r.h));
   greens.forEach(g => x.drawImage(img.g, g.x, g.y, g.w, g.h));
   blues.forEach(b => x.drawImage(img.b, b.x, b.y, b.w, b.h));
   obs.forEach(o => x.drawImage(img.o, o.x, o.y, o.w, o.h));
-  buffs.forEach(bf => x.drawImage(img.s, bf.x, bf.y, bf.w, bf.h));
 
-  // Bullets
+  buffs.forEach(bf => {
+    if (bf.tType === "speed") x.drawImage(img.s, bf.x, bf.y, bf.w, bf.h);
+    if (bf.tType === "fever") x.drawImage(img.fever, bf.x, bf.y, bf.w, bf.h);
+  });
+
+  // ---------------------------
+  //  BULLETS
+  // ---------------------------
   bullets.forEach(b => {
     x.drawImage(b.img, b.x, b.y, b.w, b.h);
     x.fillStyle = "rgba(255,255,0,0.4)";
     x.fillRect(b.x + b.w / 4, b.y + b.h, b.w / 2, 15);
   });
 
-  // Particles
+  // ---------------------------
+  //  PARTICLES
+  // ---------------------------
   particles.forEach(p0 => {
     x.fillStyle = p0.color;
     x.globalAlpha = Math.max(0, p0.life / 400);
@@ -1043,6 +992,9 @@ function draw() {
     x.globalAlpha = 1;
   });
 
+  // ---------------------------
+  //  TEXTS
+  // ---------------------------
   // Combo text
   if (comboText && now < comboTextUntil) {
     x.textAlign = "center";
@@ -1059,14 +1011,17 @@ function draw() {
     x.fillText("ANFO SLOW-MO", W / 2, 100);
   }
 
+  // Fever text
   if (feverActive) {
     x.textAlign = "center";
-    x.font = "20px Arial";
+    x.font = "22px Arial";
     x.fillStyle = "#ffbb33";
     x.fillText("FEVER MODE!", W / 2, 130);
   }
 
-  // Game Over overlay
+  // ---------------------------
+  //  GAME OVER
+  // ---------------------------
   if (go) {
     x.fillStyle = "rgba(0,0,0,0.6)";
     x.fillRect(0, 0, W, H);
@@ -1097,7 +1052,9 @@ function draw() {
 applyMode("normal");
 reset();
 
-// Firebase
+// ---------------------------
+//  FIREBASE
+// ---------------------------
 auth.signInAnonymously()
   .then(() => {
     console.log("✅ Firebase Connected:", auth.currentUser.uid);

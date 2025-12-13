@@ -494,6 +494,12 @@ if (firebaseReady && auth) {
   auth.signInAnonymously()
     .then(() => {
       console.log("✅ Firebase Connected");
+       console.log("DEBUG profile:", profile);
+console.log("DEBUG pc:", pc);
+console.log("DEBUG currentSkin:", currentSkin);
+console.log("DEBUG hs:", hs);
+console.log("DEBUG firebaseReady:", firebaseReady);
+console.log("DEBUG user:", auth.currentUser);
       loadOnlineData();
     })
     .catch(err => {

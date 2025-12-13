@@ -489,6 +489,7 @@ closeProfileBtn && (closeProfileBtn.onclick = closeProfileMenu);
 /* -------------------------------
    Firebase Online Sync (Safe Mode)
 --------------------------------*/
+
 if (firebaseReady && auth) {
   auth.signInAnonymously()
     .then(() => {
@@ -497,83 +498,120 @@ if (firebaseReady && auth) {
     })
     .catch(err => {
       console.warn("⚠ Firebase offline mode:", err);
-      firebaseReady = false; // مهم: از این به بعد فقط آفلاین
+      firebaseReady = false;
     });
 }
 
+/* -------------------------------
+   Save Profile Online
+--------------------------------*/
 function saveProfileOnline() {
-  if (!firebaseReady || !auth || !db || !profile) return;
+  if (!firebaseReady || !auth || !db) return;
   const user = auth.currentUser;
   if (!user) return;
+
   db.collection("profiles").doc(user.uid).set({
-    username: profile.username,
-    avatar: profile.avatar,
-    skin: currentSkin,
-    pc,
+    username: profile?.username || "Guest",
+    avatar: profile?.avatar || "p1",
+    skin: currentSkin || "p",
+    pc: pc ?? 0,
     updated: Date.now()
-  }, { merge: true }).catch(err => console.warn("profile save fail", err));
+  }, { merge: true })
+  .catch(err => console.warn("profile save fail", err));
 }
 
+/* -------------------------------
+   Save High Score Online
+--------------------------------*/
 function saveHighScoreOnline() {
   if (!firebaseReady || !auth || !db) return;
   const user = auth.currentUser;
   if (!user) return;
+
   db.collection("scores").doc(user.uid).set({
-    score: hs,
-    username: profile ? profile.username : "Guest",
+    score: hs ?? 0,
+    username: profile?.username || "Guest",
     updated: Date.now()
-  }, { merge: true }).catch(err => console.warn("hs save fail", err));
+  }, { merge: true })
+  .catch(err => console.warn("hs save fail", err));
 }
 
+/* -------------------------------
+   Load Online Data
+--------------------------------*/
 function loadOnlineData() {
   if (!firebaseReady || !auth || !db) return;
   const user = auth.currentUser;
   if (!user) return;
 
-  // Load Profile
+  /* ---- Load Profile ---- */
   db.collection("profiles").doc(user.uid).get()
     .then(doc => {
       if (!doc.exists) {
-        db.collection("profiles").doc(user.uid).set({
+        // Create default profile
+        const defaultProfile = {
           username: "Guest",
           avatar: "p1",
           skin: "p",
           pc: 0,
           created: Date.now()
-        });
+        };
+
+        db.collection("profiles").doc(user.uid).set(defaultProfile);
+
+        profile = { username: "Guest", avatar: "p1", skin: "p" };
+        pc = 0;
+        currentSkin = "p";
+
+        localStorage.setItem("profile", JSON.stringify(profile));
+        localStorage.setItem("pc", pc);
+        localStorage.setItem("skin", currentSkin);
+
+        updateSkinMenu(); updateShopUI(); updateHUD();
         return;
       }
 
       const d = doc.data();
-      profile = { username: d.username, avatar: d.avatar, skin: d.skin || "p" };
-      pc = d.pc != null ? d.pc : pc;
-      currentSkin = profile.skin || currentSkin;
+      profile = {
+        username: d.username || "Guest",
+        avatar: d.avatar || "p1",
+        skin: d.skin || "p"
+      };
+
+      pc = d.pc ?? 0;
+      currentSkin = profile.skin;
+
       localStorage.setItem("profile", JSON.stringify(profile));
       localStorage.setItem("pc", pc);
       localStorage.setItem("skin", currentSkin);
+
       updateSkinMenu(); updateShopUI(); updateHUD();
     })
     .catch(err => console.warn("profile load fail", err));
 
-  // Load Score
+  /* ---- Load Score ---- */
   db.collection("scores").doc(user.uid).get()
     .then(doc => {
       if (!doc.exists) {
         db.collection("scores").doc(user.uid).set({
           score: 0,
-          username: profile ? profile.username : "Guest",
+          username: profile?.username || "Guest",
           created: Date.now()
         });
+        hs = 0;
+        localStorage.setItem("hs", hs);
+        updateHUD();
         return;
       }
 
       const d = doc.data();
-      hs = d.score || hs;
+      hs = d.score ?? 0;
       localStorage.setItem("hs", hs);
       updateHUD();
     })
     .catch(err => console.warn("score load fail", err));
 }
+
 /* -------------------------------
    Leaderboard (Safe Mode)
 --------------------------------*/

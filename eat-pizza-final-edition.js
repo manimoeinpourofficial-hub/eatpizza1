@@ -1,39 +1,62 @@
-// ============================================
-//  Firebase Safe Mode (Compat v9.6.11)
-// ============================================
+// ============================================================
+// Eat Pizza · ANFO Edition
+// Firebase Safe Mode + Mobile Safe + Skins + Hunger + Items
+// ============================================================
+
+/* -------------------------------
+   Firebase Safe Mode
+--------------------------------*/
 let auth = null, db = null, firebaseReady = false;
+
 try {
   if (window.firebase && firebase.apps && firebase.apps.length > 0) {
+    firebaseReady = true;
     auth = firebase.auth();
     db = firebase.firestore();
-    firebaseReady = true;
   } else {
     console.warn("Firebase app not initialized, running offline.");
   }
 } catch (e) {
   console.warn("Firebase not available, running offline.", e);
+  firebaseReady = false;
 }
 
-// ============================================
-//  Canvas & basic state
-// ============================================
+/* -------------------------------
+   Canvas & globals
+--------------------------------*/
 const c = document.getElementById("gameCanvas");
 const x = c.getContext("2d");
-let W = innerWidth, H = innerHeight;
 
-let p = { x: 0, y: 0, w: 0, h: 0, scale: 1, glow: false };
-let reds = [], obs = [], greens = [], blues = [], buffs = [], bullets = [], particles = [];
-let specialPizzas = []; // pizza44
+let W = window.innerWidth;
+let H = window.innerHeight;
+let DPR = window.devicePixelRatio || 1;
 
-let score = 0, hs = +localStorage.getItem("hs") || 0, pc = +localStorage.getItem("pc") || 0;
-let ammo = 0, go = false, start = false, paused = false;
-let currentMode = "normal", gameSpeed = 1, spawnPressure = 1;
-let item = 40, bs = 20, zigzagIntensity = 1;
+let start = false;
+let go = false;
+let paused = false;
 
-// Hunger & miss & spawn modifiers
-let hunger = 50;       // 0..100
+let score = 0;
+let hs = +localStorage.getItem("hs") || 0;
+let pc = +localStorage.getItem("pc") || 0;
+
+let ammo = 0;
+let hunger = 50;          // 0..100
 let missCount = 0;
 const maxMiss = 5;
+
+let reds = [];
+let obs = [];
+let greens = [];
+let blues = [];
+let buffs = [];
+let bullets = [];
+let particles = [];
+let specialPizzas = [];
+
+let currentMode = "normal";
+let gameSpeed = 1;
+let spawnPressure = 1;
+let zigzagIntensity = 0;  // فقط در هارد فعال می‌کنیم
 
 let pizzasSinceLastBullet = 0;
 
@@ -46,16 +69,26 @@ let pizzaSpawnMul = 1;
 
 let godMode = false, godUntil = 0, fever = false, feverUntil = 0;
 let shake = 0;
-let currentSkin = localStorage.getItem("skin") || "p";
-
 let combo = 0, comboMul = 1, comboText = "", comboUntil = 0, lastPizzaTime = 0;
 
-// Control type: "touch" | "tilt" | "both"
+let currentSkin = localStorage.getItem("skin") || "p";
+
+/* Control type: "touch" | "tilt" | "both" */
 let controlType = localStorage.getItem("controlType") || "touch";
 let tiltActive = false;
 let tiltBaseline = 0;
 
-// DOM refs
+/* Player object */
+let p = {
+  x: 0,
+  y: 0,
+  w: 0,
+  h: 0,
+  scale: 1,
+  glow: false
+};
+
+/* DOM refs */
 const startMenu = document.getElementById("startMenu");
 const playBtn = document.getElementById("playBtn");
 const modeChips = document.querySelectorAll(".mode-chip");
@@ -78,119 +111,115 @@ const weeklyList = weeklyMenu ? weeklyMenu.querySelector("#weeklyList") : null;
 const leaderboardMenu = document.getElementById("leaderboardMenu");
 const settingsMenu = document.getElementById("settingsMenu");
 
-// Profile DOM
+/* Profile DOM */
 const profileMenu = document.getElementById("profileMenu");
 const usernameInput = document.getElementById("usernameInput");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const closeProfileBtn = document.getElementById("closeProfileBtn");
 
-// Loading screen
+/* Loading screen */
 const loadingScreen = document.getElementById("loadingScreen");
-const loadingCanvas = document.createElement("canvas");
+const loadingCanvas = document.getElementById("loadingCanvas");
 const lc = loadingCanvas.getContext("2d");
-loadingCanvas.id = "loadingCanvas";
-loadingScreen && loadingScreen.appendChild(loadingCanvas);
 
-let Wl = window.innerWidth, Hl = window.innerHeight;
-
-// Profile state
+/* Profile state */
 let profile = JSON.parse(localStorage.getItem("profile") || "null");
 let selectedAvatar = profile ? profile.avatar : null;
 let pendingStartAfterProfile = false;
 
-// ============================================
-//  Resize
-// ============================================
-function resizeAll() {
-  const r = devicePixelRatio || 1;
-  W = innerWidth; H = innerHeight;
-  c.width = W * r; c.height = H * r;
-  x.setTransform(r, 0, 0, r, 0, 0);
-
-  let s = Math.min(W, H) * 0.22;
-  p.w = p.h = s;
-  p.x = (W - s) / 2;
-  p.y = H - s - 8; // چسبیده به پایین
-  item = s * 0.6;
-  bs = s * 0.25;
-
-  Wl = W; Hl = H;
-  loadingCanvas.width = Wl;
-  loadingCanvas.height = Hl;
+/* -------------------------------
+   Images
+--------------------------------*/
+function loadImg(src) {
+  const i = new Image();
+  i.src = src;
+  i.loading = "eager";
+  return i;
 }
-resizeAll();
-addEventListener("resize", resizeAll);
 
-// ============================================
-//  Images & Audio
-// ============================================
-const I = s => { const i = new Image(); i.src = s; return i; };
 const img = {
-  p:   I("PIZZA-KHOOR.png"),
-  pizzakhoor11: I("pizzakhoor11.png"),
-  pizzakhoor12: I("pizzakhoor12.png"),
-  r:   I("pizza1.png"),
-  g:   I("DRUG.png"),      // drug
-  b:   I("weed.webp"),     // weed
-  o:   I("shit.webp"),
-  bu:  I("bullet.png"),
-  s:   I("speed.png"),     // speed item
-  fever: I("pizza44.png"), // special slow pizza
-  bg:  I("pizzaback.jpg")
+  p: loadImg("PIZZA-KHOOR.png"),
+  pizzakhoor11: loadImg("pizzakhoor11.png"),
+  pizzakhoor12: loadImg("pizzakhoor12.png"),
+
+  r: loadImg("pizza1.png"),
+  g: loadImg("DRUG.png"),     // drug
+  b: loadImg("weed.png"),     // weed (PNG instead of webp)
+  o: loadImg("shit.png"),     // shit (PNG instead of webp)
+
+  bu: loadImg("bullet.png"),
+  s: loadImg("speed.png"),
+  fever: loadImg("pizza44.png"),
+
+  bg: loadImg("pizzaback.jpg")
 };
 
-const makeAudio = s => { const a = new Audio(s); a.preload = "auto"; return a; };
+/* -------------------------------
+   Audio (mobile safe)
+--------------------------------*/
+function safeAudio(src) {
+  const a = new Audio(src);
+  a.preload = "none"; // let browser decide
+  return a;
+}
+
 const sounds = {
-  pizza: [makeAudio("2.mp3"), makeAudio("3.mp3"), makeAudio("5.mp3")],
-  drug: makeAudio("1.mp3"),
-  explode: makeAudio("gooz1.mp3"),
-  gameOver: makeAudio("gameover.mp3")
+  pizza: [safeAudio("2.mp3"), safeAudio("3.mp3"), safeAudio("5.mp3")],
+  drug: safeAudio("1.mp3"),
+  explode: safeAudio("gooz1.mp3"),
+  gameOver: safeAudio("gameover.mp3")
 };
-const bg = makeAudio("background.mp3");
-bg.loop = true; bg.volume = 0.3;
+
+const bg = safeAudio("background.mp3");
+bg.loop = true;
+bg.volume = 0.3;
 let soundOn = true;
 
 function playSound(name) {
   if (!start || !soundOn) return;
   const s = sounds[name]; if (!s) return;
   const base = Array.isArray(s) ? s[(Math.random() * s.length) | 0] : s;
-  const a = base.cloneNode(); a.currentTime = 0; a.play().catch(() => {});
+  const a = base.cloneNode();
+  a.currentTime = 0;
+  a.play().catch(() => {});
 }
 
-// ============================================
-//  Background cover (سفید کمرنگ + بکگراند)
-// ============================================
-function drawBG() {
-  x.fillStyle = "rgba(255,255,255,0.08)";
-  x.fillRect(0, 0, W, H);
-  if (!img.bg.complete) return;
-  const iw = img.bg.width, ih = img.bg.height;
-  if (!iw || !ih) return;
-  const cr = W / H, ir = iw / ih;
-  let dw, dh;
-  if (ir > cr) { dh = H; dw = ir * H; }
-  else { dw = W; dh = W / ir; }
-  const dx = (W - dw) / 2, dy = (H - dh) / 2;
-  x.save(); x.globalAlpha = 0.15; x.drawImage(img.bg, dx, dy, dw, dh); x.restore();
+/* -------------------------------
+   Resize (canvas + loadingCanvas)
+--------------------------------*/
+function resizeAll() {
+  DPR = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+
+  // main canvas
+  c.width = W * DPR;
+  c.height = H * DPR;
+  c.style.width = W + "px";
+  c.style.height = H + "px";
+  x.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // loading canvas
+  loadingCanvas.width = W * DPR;
+  loadingCanvas.height = H * DPR;
+  loadingCanvas.style.width = W + "px";
+  loadingCanvas.style.height = H + "px";
+  lc.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  // player bottom
+  const base = Math.min(W, H) * 0.22;
+  p.w = base;
+  p.h = base;
+  p.x = (W - p.w) / 2;
+  p.y = H - p.h - 10;
 }
 
-// ============================================
-//  Skins & Shop
-// ============================================
-const skins = {
-  p: { id: "p", name: "Default", unlocked: true, requireScore: 0, price: 0 },
-  pizzakhoor11: { id: "pizzakhoor11", name: "Pizzakhoor 11", unlocked: hs >= 300, requireScore: 300, price: 200 },
-  pizzakhoor12: { id: "pizzakhoor12", name: "Pizzakhoor 12", unlocked: hs >= 800, requireScore: 800, price: 350 }
-};
+window.addEventListener("resize", resizeAll);
+window.addEventListener("load", resizeAll);
 
-const shopItems = [
-  { id: "skin_p11", type: "skin", skinId: "pizzakhoor11", title: "Pizzakhoor 11", desc: "Sharper crust.", price: 200 },
-  { id: "skin_p12", type: "skin", skinId: "pizzakhoor12", title: "Pizzakhoor 12", desc: "Elite slice.",   price: 350 },
-  { id: "upg_slowmo", type: "upgrade", title: "SlowMo Boost", desc: "Start with 3s slow motion.", price: 150, key: "upg_slowmo" },
-  { id: "upg_ammo",   type: "upgrade", title: "Extra Ammo",   desc: "Start with +3 ammo.",        price: 120, key: "upg_ammo" },
-  { id: "upg_double", type: "upgrade", title: "Double PC",    desc: "2x PC per pizza.",           price: 400, key: "upg_double" }
-];
-
+/* -------------------------------
+   HUD
+--------------------------------*/
 function updateHUD() {
   hudScore && (hudScore.textContent = "Score: " + score);
   hudHigh  && (hudHigh.textContent  = "High: "  + hs);
@@ -205,6 +234,23 @@ function showToast(msg, dur = 2000) {
   statusToast.classList.add("show");
   setTimeout(() => statusToast.classList.remove("show"), dur);
 }
+
+/* -------------------------------
+   Skins & Shop
+--------------------------------*/
+const skins = {
+  p: { id: "p", name: "Default", unlocked: true, requireScore: 0, price: 0 },
+  pizzakhoor11: { id: "pizzakhoor11", name: "Pizzakhoor 11", unlocked: hs >= 300, requireScore: 300, price: 200 },
+  pizzakhoor12: { id: "pizzakhoor12", name: "Pizzakhoor 12", unlocked: hs >= 800, requireScore: 800, price: 350 }
+};
+
+const shopItems = [
+  { id: "skin_p11", type: "skin", skinId: "pizzakhoor11", title: "Pizzakhoor 11", desc: "Sharper crust.", price: 200 },
+  { id: "skin_p12", type: "skin", skinId: "pizzakhoor12", title: "Pizzakhoor 12", desc: "Elite slice.",   price: 350 },
+  { id: "upg_slowmo", type: "upgrade", title: "SlowMo Boost", desc: "Start with 3s slow motion.", price: 150, key: "upg_slowmo" },
+  { id: "upg_ammo",   type: "upgrade", title: "Extra Ammo",   desc: "Start with +3 ammo.",        price: 120, key: "upg_ammo" },
+  { id: "upg_double", type: "upgrade", title: "Double PC",    desc: "2x PC per pizza.",           price: 400, key: "upg_double" }
+];
 
 function updateSkinUnlocked() {
   skins.p.unlocked = true;
@@ -245,9 +291,6 @@ function updateSkinMenu() {
 
 function openSkinMenu()  { skinMenu && skinMenu.classList.remove("hidden"); updateSkinMenu(); }
 function closeSkinMenu() { skinMenu && skinMenu.classList.add("hidden"); }
-
-function openShopMenu()  { shopMenu && shopMenu.classList.remove("hidden"); updateShopUI(); }
-function closeShopMenu() { shopMenu && shopMenu.classList.add("hidden"); }
 
 function updateShopUI() {
   if (!shopList) return;
@@ -300,9 +343,12 @@ function updateShopUI() {
   });
 }
 
-// ============================================
-//  Missions (Daily + Weekly)
-// ============================================
+function openShopMenu()  { shopMenu && shopMenu.classList.remove("hidden"); updateShopUI(); }
+function closeShopMenu() { shopMenu && shopMenu.classList.add("hidden"); }
+
+/* -------------------------------
+   Missions (Daily + Weekly)
+--------------------------------*/
 const dailyMissions = [
   { id: "d1", title: "Collect 20 pizzas", goal: 20, progress: 0, reward: 25, type: "pizza" },
   { id: "d2", title: "Reach 100 score",   goal: 100, progress: 0, reward: 35, type: "score" },
@@ -315,8 +361,21 @@ const weeklyMissions = [
   { id: "w3", title: "Collect 200 pizzas",  goal: 200, progress: 0, reward: 200, type: "pizzaTotal" }
 ];
 
+function getWeekNumber(d) {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+function saveMissions() {
+  localStorage.setItem("dailyMissions", JSON.stringify(dailyMissions));
+  localStorage.setItem("weeklyMissions", JSON.stringify(weeklyMissions));
+}
+
 function loadMissions() {
-  // Daily
+  // daily
   const d = localStorage.getItem("dailyMissions");
   const last = localStorage.getItem("dailyReset");
   const today = new Date().toDateString();
@@ -331,7 +390,7 @@ function loadMissions() {
     } catch {}
   }
 
-  // Weekly (by week number)
+  // weekly
   const w = localStorage.getItem("weeklyMissions");
   const wLast = localStorage.getItem("weeklyReset");
   const now = new Date();
@@ -347,17 +406,7 @@ function loadMissions() {
     } catch {}
   }
 }
-function getWeekNumber(d) {
-  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
-  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
-}
-function saveMissions() {
-  localStorage.setItem("dailyMissions", JSON.stringify(dailyMissions));
-  localStorage.setItem("weeklyMissions", JSON.stringify(weeklyMissions));
-}
+
 function buildMissionList(container, missions, isWeekly) {
   if (!container) return;
   container.innerHTML = "";
@@ -383,20 +432,22 @@ function buildMissionList(container, missions, isWeekly) {
     container.appendChild(div);
   });
 }
+
 function updateChallengesUI() {
   buildMissionList(challengeList, dailyMissions, false);
 }
 function updateWeeklyUI() {
   buildMissionList(weeklyList, weeklyMissions, true);
 }
+
 function openChallengeMenu()  { challengeMenu && (challengeMenu.classList.remove("hidden"), updateChallengesUI()); }
 function closeChallengeMenu() { challengeMenu && challengeMenu.classList.add("hidden"); }
 function openWeeklyMenu()    { weeklyMenu && (weeklyMenu.classList.remove("hidden"), updateWeeklyUI()); }
 function closeWeeklyMenu()   { weeklyMenu && weeklyMenu.classList.add("hidden"); }
 
-// ============================================
-//  Profile (local + optional online)
-// ============================================
+/* -------------------------------
+   Profile
+--------------------------------*/
 function highlightAvatar() {
   document.querySelectorAll(".avatar").forEach(a => {
     a.classList.toggle("selected", a.dataset.id === selectedAvatar);
@@ -435,40 +486,53 @@ saveProfileBtn && (saveProfileBtn.onclick = () => {
 });
 closeProfileBtn && (closeProfileBtn.onclick = closeProfileMenu);
 
-// ============================================
-//  Firebase online sync (Safe)
-// ============================================
+/* -------------------------------
+   Firebase Online Sync (Safe Mode)
+--------------------------------*/
 if (firebaseReady && auth) {
   auth.signInAnonymously()
-    .then(() => { console.log("✅ Firebase Connected:", auth.currentUser.uid); loadOnlineData(); })
-    .catch(err => console.error("❌ Firebase Error (Safe Mode, offline):", err));
+    .then(() => {
+      console.log("✅ Firebase Connected");
+      loadOnlineData();
+    })
+    .catch(err => {
+      console.warn("⚠ Firebase offline mode:", err);
+      firebaseReady = false; // مهم: از این به بعد فقط آفلاین
+    });
 }
 
 function saveProfileOnline() {
   if (!firebaseReady || !auth || !db || !profile) return;
-  const user = auth.currentUser; if (!user) return;
+  const user = auth.currentUser;
+  if (!user) return;
   db.collection("profiles").doc(user.uid).set({
     username: profile.username,
     avatar: profile.avatar,
     skin: currentSkin,
     pc,
     updated: Date.now()
-  }, { merge: true }).catch(console.error);
+  }, { merge: true }).catch(err => console.warn("profile save fail", err));
 }
+
 function saveHighScoreOnline() {
   if (!firebaseReady || !auth || !db) return;
-  const user = auth.currentUser; if (!user) return;
+  const user = auth.currentUser;
+  if (!user) return;
   db.collection("scores").doc(user.uid).set({
     score: hs,
     username: profile ? profile.username : "Guest",
     updated: Date.now()
-  }, { merge: true }).catch(console.error);
+  }, { merge: true }).catch(err => console.warn("hs save fail", err));
 }
+
 function loadOnlineData() {
   if (!firebaseReady || !auth || !db) return;
-  const user = auth.currentUser; if (!user) return;
-  db.collection("profiles").doc(user.uid).get().then(doc => {
-    if (doc.exists) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  db.collection("profiles").doc(user.uid).get()
+    .then(doc => {
+      if (!doc.exists) return;
       const d = doc.data();
       profile = { username: d.username, avatar: d.avatar, skin: d.skin || "p" };
       pc = d.pc != null ? d.pc : pc;
@@ -477,34 +541,33 @@ function loadOnlineData() {
       localStorage.setItem("pc", pc);
       localStorage.setItem("skin", currentSkin);
       updateSkinMenu(); updateShopUI(); updateHUD();
-    }
-  }).catch(console.error);
-  db.collection("scores").doc(user.uid).get().then(doc => {
-    if (doc.exists) {
+    })
+    .catch(err => console.warn("profile load fail", err));
+
+  db.collection("scores").doc(user.uid).get()
+    .then(doc => {
+      if (!doc.exists) return;
       const d = doc.data();
       hs = d.score || hs;
       localStorage.setItem("hs", hs);
       updateHUD();
-    }
-  }).catch(console.error);
+    })
+    .catch(err => console.warn("score load fail", err));
 }
 
-// ============================================
-//  Leaderboard (Safe)
-// ============================================
+/* -------------------------------
+   Leaderboard (Safe Mode)
+--------------------------------*/
 function openLeaderboard() {
   if (!leaderboardMenu) return;
   leaderboardMenu.classList.remove("hidden");
   const list = leaderboardMenu.querySelector(".leaderboard-list");
   if (!firebaseReady || !db) {
-    list.innerHTML = "Offline mode (no Firebase / no internet)";
+    list.innerHTML = "Offline mode (no online leaderboard)";
     return;
   }
   list.innerHTML = "Loading...";
-  db.collection("scores")
-    .orderBy("score", "desc")
-    .limit(10)
-    .get()
+  db.collection("scores").orderBy("score", "desc").limit(10).get()
     .then(snap => {
       list.innerHTML = "";
       snap.forEach(doc => {
@@ -515,18 +578,20 @@ function openLeaderboard() {
         list.appendChild(div);
       });
     })
-    .catch(err => { list.innerHTML = "Error loading leaderboard"; console.error(err); });
+    .catch(err => {
+      list.innerHTML = "Error loading leaderboard";
+      console.warn("leaderboard err", err);
+    });
 }
 function closeLeaderboard() {
   leaderboardMenu && leaderboardMenu.classList.add("hidden");
 }
 
-// ============================================
-//  Settings (Control Type + Voice placeholder)
-// ============================================
+/* -------------------------------
+   Settings (control type)
+--------------------------------*/
 function openSettingsMenu() {
-  if (!settingsMenu) return;
-  settingsMenu.classList.remove("hidden");
+  settingsMenu && settingsMenu.classList.remove("hidden");
   updateSettingsUI();
 }
 function closeSettingsMenu() {
@@ -548,9 +613,9 @@ function updateSettingsUI() {
   });
 }
 
-// ============================================
-//  Mode, Reset, Spawn
-// ============================================
+/* -------------------------------
+   Mode / Reset / Spawn
+--------------------------------*/
 let nextRed = 0, nextObs = 0, nextGreen = 0, nextBlue = 0, nextBuff = 0;
 let nextSpecialPizza = 0;
 
@@ -558,13 +623,12 @@ function applyMode(mode) {
   currentMode = mode;
   if (mode === "easy")   { gameSpeed = 0.7; zigzagIntensity = 0; }
   else if (mode === "normal") { gameSpeed = 1.0; zigzagIntensity = 0; }
-  else                   { gameSpeed = 1.4; zigzagIntensity = 1.8; } // فقط Hard زیگزاگ
+  else                   { gameSpeed = 1.4; zigzagIntensity = 1.8; }
   updateHUD();
 }
 
 function reset() {
-  reds = []; obs = []; greens = []; blues = []; buffs = []; bullets = []; particles = [];
-  specialPizzas = [];
+  reds = []; obs = []; greens = []; blues = []; buffs = []; bullets = []; particles = []; specialPizzas = [];
   score = 0; ammo = 0; go = false;
   combo = 0; comboMul = 1; comboText = ""; comboUntil = 0; shake = 0;
   slowMoUntil = 0; ultraSlowUntil = 0; ultraFastUntil = 0; ultraModeUntil = 0;
@@ -577,8 +641,12 @@ function reset() {
   if (localStorage.getItem("upg_slowmo") === "1") slowMoUntil = Date.now() + 3000;
 
   const now = Date.now();
-  nextRed = now; nextObs = now; nextGreen = now + 2000; nextBlue = now + 3000; nextBuff = now + 4000;
+  nextRed = now; nextObs = now;
+  nextGreen = now + 2000;
+  nextBlue = now + 3000;
+  nextBuff = now + 4000;
   nextSpecialPizza = now + 15000;
+
   updateHUD();
 }
 
@@ -598,12 +666,14 @@ function spawn(type, w, h, zigChance = 0.3) {
     zigSpeed: 0.05 + Math.random() * 0.06
   };
 }
+
 function applyZigzag(o, sp) {
   if (!o.zigzag || zigzagIntensity === 0) return;
   if (o.baseX == null) o.baseX = o.x;
   o.t += (o.zigSpeed || 0.05) * sp;
   o.x = o.baseX + Math.sin(o.t) * o.amp * zigzagIntensity;
 }
+
 function limitObjects() {
   if (reds.length > 12) reds.length = 12;
   if (obs.length > 8) obs.length = 8;
@@ -613,9 +683,9 @@ function limitObjects() {
   if (specialPizzas.length > 2) specialPizzas.length = 2;
 }
 
-// ============================================
-//  Player hitbox (fix skin size differences)
-// ============================================
+/* -------------------------------
+   Player hitbox (skin-safe)
+--------------------------------*/
 function playerHitbox() {
   return {
     x: p.x + p.w * 0.15,
@@ -625,9 +695,9 @@ function playerHitbox() {
   };
 }
 
-// ============================================
-//  Combo & effects
-// ============================================
+/* -------------------------------
+   Combo & effects
+--------------------------------*/
 function handleCombo() {
   const now = Date.now();
   if (now - lastPizzaTime < 2000) combo++; else combo = 1;
@@ -640,22 +710,10 @@ function handleCombo() {
 }
 function breakCombo() { combo = 0; comboMul = 1; comboText = ""; comboUntil = 0; }
 
-function activateSlowMo(ms = 5000) { slowMoUntil = Date.now() + ms; }
-function activateUltraSlow() { ultraSlowUntil = Date.now() + 8000; ultraFastUntil = 0; }
-function activateUltraFast() { ultraFastUntil = Date.now() + 8000; ultraSlowUntil = 0; }
-function activateUltraMode() { ultraModeUntil = Date.now() + 20000; showToast("ULTRA MODE"); }
-
 function updGod(now) { if (godMode && now > godUntil) { godMode = false; p.glow = false; } }
 function activateGod(ms = 6000) { godMode = true; godUntil = Date.now() + ms; p.glow = true; }
 
 function updFever(now) { if (fever && now > feverUntil) { fever = false; gameSpeed /= 1.2; } }
-function activateFever() {
-  if (fever) return;
-  fever = true; feverUntil = Date.now() + 6000; gameSpeed *= 1.2;
-  let gain = 10; if (localStorage.getItem("upg_double") === "1") gain *= 2;
-  pc += gain; localStorage.setItem("pc", pc); updateHUD();
-  profile && saveProfileOnline();
-}
 
 function isPulledByUltra(r, effSp) {
   const now = Date.now();
@@ -672,99 +730,93 @@ function isPulledByUltra(r, effSp) {
   return coll(hb, r);
 }
 
-// ============================================
-//  Input (Touch + Tilt)
-// ============================================
+/* -------------------------------
+   Input (Touch + Tilt)
+--------------------------------*/
 function move(mx) {
   p.x = Math.max(0, Math.min(mx - p.w / 2, W - p.w));
 }
 
-// Touch move
-addEventListener("mousemove", e => {
+/* touch/mouse move */
+window.addEventListener("mousemove", e => {
   if (!start || go || paused) return;
   if (controlType === "tilt") return;
   const r = c.getBoundingClientRect();
   move(e.clientX - r.left);
 });
-addEventListener("touchmove", e => {
+window.addEventListener("touchmove", e => {
   if (!start || go || paused) return;
   if (controlType === "tilt") return;
   const r = c.getBoundingClientRect(), t = e.touches[0];
   move(t.clientX - r.left);
 }, { passive: true });
 
-// Shooting
+/* shooting */
 let lastTap = 0, canShootKey = true;
 function shoot() {
   if (ammo <= 0) return;
   ammo--;
-  bullets.push({ x: p.x + p.w / 2 - bs / 2, y: p.y - 6, w: bs, h: bs * 2, s: 12, img: img.bu });
+  bullets.push({ x: p.x + p.w / 2 - 10, y: p.y - 6, w: 20, h: 40, s: 12, img: img.bu });
 }
-addEventListener("touchstart", e => {
+window.addEventListener("touchstart", e => {
   if (!start || go || paused) return;
   const now = Date.now();
   if (now - lastTap < 300) shoot();
   lastTap = now;
 }, { passive: true });
 
-addEventListener("keydown", e => {
+window.addEventListener("keydown", e => {
   if (e.code === "Space") {
     if (go) {
-      // بعد از باخت، Space برای ریست
       go = false;
       reset();
       return;
     }
-    if (canShootKey) {
+    if (canShootKey && start && !go && !paused) {
       canShootKey = false;
-      if (start && !go && !paused) shoot();
+      shoot();
     }
   }
   if (e.code === "KeyP" && start && !go) togglePause();
   if (e.code === "Enter" && !start && startMenu) startGame();
 });
-addEventListener("keyup", e => {
+window.addEventListener("keyup", e => {
   if (e.code === "Space") canShootKey = true;
 });
 
-// Device Tilt
+/* tilt */
 function enableTilt() {
   if (tiltActive) return;
-  tiltActive = true;
-
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
     DeviceOrientationEvent.requestPermission()
       .then(res => {
         if (res === "granted") {
           window.addEventListener("deviceorientation", handleTilt, true);
-          showToast("Tilt control ON");
-        } else {
-          showToast("Tilt permission denied");
+          tiltActive = true;
         }
       })
-      .catch(() => showToast("Tilt not available"));
+      .catch(() => {});
   } else {
     window.addEventListener("deviceorientation", handleTilt, true);
+    tiltActive = true;
   }
 }
 function handleTilt(e) {
   if (!start || go || paused) return;
   if (controlType === "touch") return;
-  const gamma = e.gamma; // -90 ~ 90
+  const gamma = e.gamma;
   if (gamma == null) return;
-
   if (tiltBaseline === 0) tiltBaseline = gamma;
-
   const diff = gamma - tiltBaseline;
   const tiltStrength = diff / 30;
   const moveX = p.x + tiltStrength * 10;
   p.x = Math.max(0, Math.min(moveX, W - p.w));
 }
 
-// ============================================
-//  Collision & particles
-// ============================================
+/* -------------------------------
+   Collision & Particles
+--------------------------------*/
 const coll = (a, b) =>
   a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
@@ -787,13 +839,15 @@ function updParticles(dt) {
   }
 }
 
-// ============================================
-//  Update
-// ============================================
+/* -------------------------------
+   Update loop
+--------------------------------*/
 function upd() {
   if (!start || go || paused) return;
   const now = Date.now();
-  updGod(now); updFever(now);
+
+  updGod(now);
+  updFever(now);
 
   if (now > weedEffectUntil && now > drugEffectUntil) pizzaSpawnMul = 1;
 
@@ -806,50 +860,46 @@ function upd() {
   if (now < ultraFastUntil) sp *= 1.5;
   if (now < speedBoostUntil) sp *= 1.4;
 
-  let effSp = sp * effSlow;
+  const effSp = sp * effSlow;
   const dt = 16;
 
   limitObjects();
 
-  if (now > nextRed)  { reds.push(spawn("red", item, item)); nextRed  = now + (1600 / effSp) / spawnPressure; }
-  if (now > nextObs)  { if (Math.random() < 0.5 * spawnPressure) obs.push(spawn("obs", item * 0.8, item * 0.8)); nextObs  = now + (3800 / effSp) / spawnPressure; }
-  if (now > nextGreen && Math.random() < 0.2) { greens.push(spawn("green", item, item, 0.2)); nextGreen = now + 6000; }
-  if (now > nextBlue  && Math.random() < 0.2) { blues.push(spawn("blue", item, item, 0.2));  nextBlue  = now + 8000; }
-  if (now > nextBuff  && Math.random() < 0.25) { buffs.push(spawn("buff", item, item, 0.2)); nextBuff  = now + 9000; }
+  if (now > nextRed)  { reds.push(spawn("red", 40, 40)); nextRed  = now + (1600 / effSp) / spawnPressure; }
+  if (now > nextObs)  { if (Math.random() < 0.5 * spawnPressure) obs.push(spawn("obs", 35, 35)); nextObs  = now + (3800 / effSp) / spawnPressure; }
+  if (now > nextGreen && Math.random() < 0.2) { greens.push(spawn("green", 40, 40, 0.2)); nextGreen = now + 6000; }
+  if (now > nextBlue  && Math.random() < 0.2) { blues.push(spawn("blue", 40, 40, 0.2));  nextBlue  = now + 8000; }
+  if (now > nextBuff  && Math.random() < 0.25) { buffs.push(spawn("buff", 40, 40, 0.2)); nextBuff  = now + 9000; }
 
   if (now > nextSpecialPizza && Math.random() < 0.5) {
-    specialPizzas.push(spawn("special", item, item, 0.2));
+    specialPizzas.push(spawn("special", 40, 40, 0.2));
     nextSpecialPizza = now + 20000 + Math.random() * 10000;
   }
 
   const ph = playerHitbox();
 
-  // reds (pizza)
+  // pizzas
   for (let i = reds.length - 1; i >= 0; i--) {
     const r = reds[i];
     r.y += 1.3 * effSp; applyZigzag(r, effSp);
     const collected = coll(ph, r) || isPulledByUltra(r, effSp);
     if (collected) {
       handleCombo();
-
       let base = 5;
       if (fever) base *= 2;
       if (ultraModeUntil > now) base *= 1.5;
       score += Math.round(base * comboMul);
 
-      // PC gain
       let pcGain = 1;
       if (localStorage.getItem("upg_double") === "1") pcGain = 2;
       pc += pcGain; localStorage.setItem("pc", pc);
 
-      // bullets: every 2 pizzas
       pizzasSinceLastBullet++;
       if (pizzasSinceLastBullet >= 2) {
         pizzasSinceLastBullet = 0;
         ammo++;
       }
 
-      // missions
       dailyMissions.forEach(m => {
         if (m.type === "pizza" && m.progress >= 0) m.progress++;
         if (m.type === "score" && score >= m.goal && m.progress >= 0) m.progress = m.goal;
@@ -868,8 +918,7 @@ function upd() {
       p.scale = 1.2; setTimeout(() => p.scale = 1, 150);
       reds.splice(i, 1); playSound("pizza");
     } else if (r.y > H) {
-      reds.splice(i, 1);
-      breakCombo();
+      reds.splice(i, 1); breakCombo();
       missCount++;
       if (missCount >= maxMiss) {
         go = true; playSound("gameOver");
@@ -892,7 +941,7 @@ function upd() {
     }
   }
 
-  // greens (drug: hunger -30, pizzas -30% for 10s)
+  // drug: hunger -30, pizzas -30% for 10s
   for (let i = greens.length - 1; i >= 0; i--) {
     const g = greens[i];
     g.y += 1.1 * effSp; applyZigzag(g, effSp);
@@ -907,7 +956,7 @@ function upd() {
     }
   }
 
-  // blues (weed: hunger +25, pizzas +25% for 10s)
+  // weed: hunger +25, pizzas +25% for 10s
   for (let i = blues.length - 1; i >= 0; i--) {
     const b = blues[i];
     b.y += 1.0 * effSp; applyZigzag(b, effSp);
@@ -921,7 +970,7 @@ function upd() {
     }
   }
 
-  // buffs (speed item: 10s faster + miss-1)
+  // speed: 10s faster + missCount--
   for (let i = buffs.length - 1; i >= 0; i--) {
     const bf = buffs[i];
     bf.y += 1.3 * effSp; applyZigzag(bf, effSp);
@@ -934,7 +983,7 @@ function upd() {
     } else if (bf.y > H) buffs.splice(i, 1);
   }
 
-  // special pizzas (pizza44 → slow 10s)
+  // pizza44: 10s slow
   for (let i = specialPizzas.length - 1; i >= 0; i--) {
     const s = specialPizzas[i];
     s.y += 1.1 * effSp; applyZigzag(s, effSp);
@@ -957,7 +1006,7 @@ function upd() {
         score += 3;
         dailyMissions.forEach(m => { if (m.type === "obstacle" && m.progress >= 0) m.progress++; });
         spawnParticles(o.x + o.w / 2, o.y + o.h / 2, "#ff6600", 12);
-        playSound("explode"); // gooz1
+        playSound("explode");
         shake = 10;
         break;
       }
@@ -970,13 +1019,39 @@ function upd() {
   updateHUD();
 }
 
-// ============================================
-//  Draw
-// ============================================
-function draw() {
-  x.save(); x.clearRect(0, 0, W, H);
-  const now = Date.now();
+/* -------------------------------
+   Draw
+--------------------------------*/
+function drawBG() {
+  x.fillStyle = "rgba(255,255,255,0.08)";
+  x.fillRect(0, 0, W, H);
+  if (!img.bg.complete) return;
+  const iw = img.bg.width, ih = img.bg.height;
+  const cr = W / H, ir = iw / ih;
+  let dw, dh;
+  if (ir > cr) { dh = H; dw = ir * H; }
+  else { dw = W; dh = W / ir; }
+  x.save();
+  x.globalAlpha = 0.15;
+  x.drawImage(img.bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  x.restore();
+}
 
+function drawPlayer() {
+  const skin = img[currentSkin];
+  if (!skin.complete) return;
+  x.save();
+  x.translate(p.x + p.w / 2, p.y + p.h / 2);
+  x.scale(p.scale, p.scale);
+  x.drawImage(skin, -p.w / 2, -p.h / 2, p.w, p.h);
+  x.restore();
+}
+
+function draw() {
+  x.save();
+  x.clearRect(0, 0, W, H);
+
+  const now = Date.now();
   drawBG();
 
   if (shake > 0) {
@@ -996,19 +1071,7 @@ function draw() {
     x.fillStyle = "rgba(255,220,80,0.1)"; x.fillRect(0, 0, W, H);
   }
 
-  // player
-  x.save();
-  x.translate(p.x + p.w / 2, p.y + p.h / 2);
-  x.scale(p.scale, p.scale);
-  if (p.glow) {
-    const g = x.createRadialGradient(0, 0, p.w * 0.3, 0, 0, p.w);
-    g.addColorStop(0, "rgba(0,250,255,0.8)"); g.addColorStop(1, "rgba(0,250,255,0)");
-    x.fillStyle = g; x.beginPath(); x.arc(0, 0, p.w, 0, Math.PI * 2); x.fill();
-  }
-  if (img[currentSkin] && img[currentSkin].complete) {
-    x.drawImage(img[currentSkin], -p.w / 2, -p.h / 2, p.w, p.h);
-  }
-  x.restore();
+  drawPlayer();
 
   reds.forEach(r => img.r.complete && x.drawImage(img.r, r.x, r.y, r.w, r.h));
   greens.forEach(g0 => img.g.complete && x.drawImage(img.g, g0.x, g0.y, g0.w, g0.h));
@@ -1019,8 +1082,6 @@ function draw() {
 
   bullets.forEach(b => {
     if (b.img && b.img.complete) x.drawImage(b.img, b.x, b.y, b.w, b.h);
-    x.fillStyle = "rgba(255,255,0,0.4)";
-    x.fillRect(b.x + b.w / 4, b.y + b.h, b.w / 2, 15);
   });
 
   particles.forEach(p0 => {
@@ -1034,52 +1095,50 @@ function draw() {
     x.textAlign = "center"; x.font = "24px Arial"; x.fillStyle = "#facc15";
     x.fillText(comboText, W / 2, 70);
   }
-  if (now < ultraModeUntil) {
-    x.textAlign = "center"; x.font = "20px Arial"; x.fillStyle = "#ff00ff";
-    x.fillText("ULTRA MODE", W / 2, 100);
-  }
 
   if (go) {
     x.fillStyle = "rgba(0,0,0,0.6)"; x.fillRect(0, 0, W, H);
-    x.fillStyle = "#fff"; x.textAlign = "center"; x.textBaseline = "middle";
-    x.font = "40px Arial"; x.fillText("Game Over", W / 2, H / 2 - 20);
-    x.font = "20px Arial";
-    x.fillText("Tap / Space to Restart", W / 2, H / 2 + 20);
-    x.fillText("High: " + hs, W / 2, H / 2 + 50);
-    x.fillText("PC: " + pc, W / 2, H / 2 + 80);
+    x.fillStyle = "#fff"; x.textAlign = "center";
+    x.font = "32px Arial"; x.fillText("Game Over", W / 2, H / 2 - 20);
+    x.font = "18px Arial";
+    x.fillText("Tap / Space to Restart", W / 2, H / 2 + 10);
   }
 
   x.restore();
 }
 
-// ============================================
-//  Loop
-// ============================================
+/* -------------------------------
+   Main Loop
+--------------------------------*/
 (function loop() {
-  upd(); draw(); requestAnimationFrame(loop);
+  upd();
+  draw();
+  requestAnimationFrame(loop);
 })();
 
-// ============================================
-//  Start menu & pause & sound
-// ============================================
+/* -------------------------------
+   Start / Pause / Sound
+--------------------------------*/
 function startGame() {
   if (!profile) {
     pendingStartAfterProfile = true;
     openProfileMenu();
     return;
   }
-  start = true; go = false; reset();
+  start = true;
+  go = false;
+  reset();
   startMenu && startMenu.classList.add("hidden");
   document.body.classList.add("playing");
-  tiltBaseline = 0;
-  if (controlType === "tilt" || controlType === "both") enableTilt();
   if (soundOn) bg.play().catch(() => {});
 }
+
 function togglePause() {
   if (!start || go) return;
   paused = !paused;
   pauseMenu && pauseMenu.classList.toggle("hidden", !paused);
 }
+
 function goToMainMenu() {
   start = false; go = false; paused = false;
   reset(); bg.pause();
@@ -1087,6 +1146,7 @@ function goToMainMenu() {
   startMenu && startMenu.classList.remove("hidden");
   pauseMenu && pauseMenu.classList.add("hidden");
 }
+
 function toggleSound() {
   soundOn = !soundOn;
   const el = document.getElementById("soundState");
@@ -1094,10 +1154,10 @@ function toggleSound() {
   if (!soundOn) bg.pause(); else if (start) bg.play().catch(() => {});
 }
 
-// ============================================
-//  Init buttons & menus
-// ============================================
-playBtn && (playBtn.onclick = () => { startGame(); });
+/* -------------------------------
+   Buttons & Menu
+--------------------------------*/
+playBtn && (playBtn.onclick = () => startGame());
 pauseBtn && (pauseBtn.onclick = () => togglePause());
 
 modeChips.forEach(chip => {
@@ -1122,13 +1182,13 @@ menuTiles.forEach(btn => {
   };
 });
 
-// ============================================
-//  Fun loading (falling pizzas)
-// ============================================
+/* -------------------------------
+   Loading animation
+--------------------------------*/
 let fallingPizzas = [];
 function spawnLoadingPizza() {
   fallingPizzas.push({
-    x: Math.random() * Wl,
+    x: Math.random() * W,
     y: -50,
     s: 40 + Math.random() * 30,
     speed: 1 + Math.random() * 2,
@@ -1142,8 +1202,7 @@ setInterval(() => {
 }, 220);
 
 function loadingLoop() {
-  if (!loadingScreen) return;
-  lc.clearRect(0, 0, Wl, Hl);
+  lc.clearRect(0, 0, W, H);
   fallingPizzas.forEach(pz => {
     pz.y += pz.speed; pz.rot += pz.rv;
     lc.save();
@@ -1152,20 +1211,21 @@ function loadingLoop() {
     if (img.r.complete) lc.drawImage(img.r, -pz.s / 2, -pz.s / 2, pz.s, pz.s);
     lc.restore();
   });
-  fallingPizzas = fallingPizzas.filter(pz => pz.y < Hl + 60);
+  fallingPizzas = fallingPizzas.filter(pz => pz.y < H + 80);
   requestAnimationFrame(loadingLoop);
 }
 loadingLoop();
 
-// ============================================
-//  Asset loading & start
-// ============================================
+/* -------------------------------
+   Asset loading & removing loader
+--------------------------------*/
 const assets = [
   img.p, img.pizzakhoor11, img.pizzakhoor12,
   img.r, img.g, img.b, img.o, img.bu, img.s, img.fever, img.bg,
   ...Object.values(sounds).flat(), bg
 ];
 let loadedCount = 0;
+
 function assetDone() {
   loadedCount++;
   const percent = Math.min(100, Math.round(loadedCount / assets.length * 100));
@@ -1173,6 +1233,7 @@ function assetDone() {
   const percentEl = document.getElementById("loadingPercent");
   if (fill) fill.style.width = percent + "%";
   if (percentEl) percentEl.textContent = percent + "%";
+
   if (loadedCount >= assets.length) {
     setTimeout(() => {
       if (loadingScreen) {
@@ -1185,6 +1246,7 @@ function assetDone() {
     }, 400);
   }
 }
+
 assets.forEach(a => {
   if (a instanceof Image) {
     a.onload = assetDone; a.onerror = assetDone;
@@ -1193,21 +1255,21 @@ assets.forEach(a => {
   }
 });
 
-// ============================================
-//  Export for HTML buttons
-// ============================================
-window.goToMainMenu = goToMainMenu;
-window.toggleSound = toggleSound;
-window.openShopMenu = openShopMenu;
-window.closeShopMenu = closeShopMenu;
-window.openSkinMenu = openSkinMenu;
-window.closeSkinMenu = closeSkinMenu;
-window.openChallengeMenu = openChallengeMenu;
-window.closeChallengeMenu = closeChallengeMenu;
-window.openWeeklyMenu = openWeeklyMenu;
-window.closeWeeklyMenu = closeWeeklyMenu;
-window.openLeaderboard = openLeaderboard;
+/* -------------------------------
+   Export for HTML
+--------------------------------*/
+window.goToMainMenu     = goToMainMenu;
+window.toggleSound      = toggleSound;
+window.openShopMenu     = openShopMenu;
+window.closeShopMenu    = closeShopMenu;
+window.openSkinMenu     = openSkinMenu;
+window.closeSkinMenu    = closeSkinMenu;
+window.openChallengeMenu= openChallengeMenu;
+window.closeChallengeMenu= closeChallengeMenu;
+window.openWeeklyMenu   = openWeeklyMenu;
+window.closeWeeklyMenu  = closeWeeklyMenu;
+window.openLeaderboard  = openLeaderboard;
 window.closeLeaderboard = closeLeaderboard;
-window.closeSettingsMenu = closeSettingsMenu;
+window.closeSettingsMenu= closeSettingsMenu;
 
-console.log("✅ Eat Pizza Final Edition (Tilt + Hunger + Items + Clean UI) Loaded");
+console.log("✅ Eat Pizza · Firebase Safe Mode · Mobile Ready");

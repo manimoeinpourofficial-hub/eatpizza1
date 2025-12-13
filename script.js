@@ -1277,35 +1277,56 @@ function loadOnlineData() {
 // ---------------------------
 function openLeaderboard() {
   const lb = document.getElementById("leaderboardMenu");
-  if (!lb) return;
+  const list = lb.querySelector(".leaderboard-list");
+  const loading = document.getElementById("leaderboardLoading");
 
   lb.classList.remove("hidden");
-
-  const list = lb.querySelector(".leaderboard-list");
-  list.innerHTML = "Loading...";
+  list.innerHTML = "";
+  loading.style.display = "block";
 
   db.collection("scores")
     .orderBy("score", "desc")
-    .limit(10)
+    .limit(20)
     .get()
     .then(snap => {
-      list.innerHTML = "";
+      loading.style.display = "none";
+
+      if (snap.empty) {
+        list.innerHTML = "<div class='leaderboard-loading'>No records yet</div>";
+        return;
+      }
+
+      let rank = 1;
+
       snap.forEach(doc => {
         const d = doc.data();
+        const isSelf = auth.currentUser && doc.id === auth.currentUser.uid;
+
         const div = document.createElement("div");
-        div.className = "leaderboard-item";
-        div.textContent = `${d.username || "Player"} — ${d.score}`;
+        div.className = "leaderboard-item" + (isSelf ? " lb-self" : "");
+
+        // Rank icons
+        let rankIcon = rank;
+        if (rank === 1) rankIcon = "🥇";
+        else if (rank === 2) rankIcon = "🥈";
+        else if (rank === 3) rankIcon = "🥉";
+
+        div.innerHTML = `
+          <div class="rank">${rankIcon}</div>
+          <img class="avatar" src="${(d.avatar || 'p')}.png">
+          <div class="lb-name">${d.username || "Player"}</div>
+          <div class="lb-score">${d.score}</div>
+        `;
+
         list.appendChild(div);
+        rank++;
       });
     });
 }
 
 function closeLeaderboard() {
-  const lb = document.getElementById("leaderboardMenu");
-  if (!lb) return;
-  lb.classList.add("hidden");
+  document.getElementById("leaderboardMenu").classList.add("hidden");
 }
-
 // ---------------------------
 //  PAUSE SYSTEM
 // ---------------------------

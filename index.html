@@ -5,7 +5,7 @@
   <title>Eat Pizza</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- PWA basics -->
+  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#111827">
 
@@ -16,6 +16,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
+
 <body>
   <div id="gameContainer">
     <canvas id="gameCanvas"></canvas>
@@ -90,7 +91,7 @@
       </div>
     </div>
 
-    <!-- Challenges Modal (Daily + Achievements) -->
+    <!-- Challenges Modal -->
     <div id="challengeMenu" class="modal hidden">
       <div class="modal-content challenge-box">
         <h2>🔥 Challenges</h2>
@@ -118,10 +119,11 @@
         <button class="close-btn" onclick="closeShop()">Close</button>
       </div>
     </div>
+
   </div>
 
-  <script src="audio.js"></script>
-  <script src="systems.js"></script>
-  <script src="game.js"></script>
+  <!-- ✅ فقط یک فایل JS -->
+  <script src="script.js"></script>
+
 </body>
 </html>

@@ -144,8 +144,8 @@ const img = {
 
   r: loadImg("pizza1.png"),
   g: loadImg("DRUG.png"),     // drug
-  b: loadImg("weed.png"),     // weed (PNG instead of webp)
-  o: loadImg("shit.png"),     // shit (PNG instead of webp)
+  b: loadImg("weed.webp"),     // weed (PNG instead of webp)
+  o: loadImg("shit.webp"),     // shit (PNG instead of webp)
 
   bu: loadImg("bullet.png"),
   s: loadImg("speed.png"),

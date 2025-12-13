@@ -323,3 +323,106 @@ canvas {
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* Leaderboard Modal */
+#leaderboardMenu.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+#leaderboardMenu.hidden {
+  display: none;
+}
+
+.leaderboard-box {
+  width: 90%;
+  max-width: 420px;
+  background: #111827;
+  border-radius: 16px;
+  padding: 20px;
+  color: white;
+  box-shadow: 0 0 25px rgba(255, 204, 51, 0.4);
+  animation: slideUp 0.35s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #ffcc33;
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.leaderboard-loading {
+  text-align: center;
+  padding: 10px;
+  font-size: 18px;
+  opacity: 0.8;
+}
+
+.leaderboard-list {
+  max-height: 350px;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.leaderboard-item {
+  display: flex;
+  align-items: center;
+  background: #1f2937;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: transform 0.15s;
+}
+
+.leaderboard-item:hover {
+  transform: scale(1.02);
+}
+
+.rank {
+  width: 40px;
+  font-size: 22px;
+  text-align: center;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  margin-right: 12px;
+  border: 2px solid #ffcc33;
+}
+
+.lb-name {
+  flex: 1;
+  font-size: 17px;
+}
+
+.lb-score {
+  font-size: 18px;
+  font-weight: bold;
+  color: #ffcc33;
+}
+
+.lb-self {
+  background: rgba(255, 204, 51, 0.15);
+  border: 1px solid #ffcc33;
+}

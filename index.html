@@ -5,22 +5,21 @@
   <title>Eat Pizza</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#111827">
 
   <link rel="stylesheet" href="style.css">
 
-  <!-- Firebase v8 (در صورت نخواستن، می‌تونی موقتاً کامنت کنی) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+  <!-- Firebase v9 compat (ساده‌تر برای این سبک کد) -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-firestore-compat.js"></script>
 </head>
 <body>
   <div id="gameContainer">
     <canvas id="gameCanvas"></canvas>
 
-    <!-- HUD بالا -->
+    <!-- HUD -->
     <div id="hud">
       <div class="hud-left">
         <span id="scoreLabel">Score: 0</span>
@@ -32,17 +31,16 @@
       </div>
     </div>
 
-    <!-- پیام وضعیت کوتاه (Ultra Mode, SlowMo, …) -->
     <div id="statusToast"></div>
 
-    <!-- Start Menu – cute و جمع‌وجور -->
+    <!-- Start Menu -->
     <div id="startMenu" class="overlay">
       <div class="menu-box">
         <h1 class="logo">🍕 Eat Pizza</h1>
-        <p class="subtitle">ANFO Cute Arcade</p>
+        <p class="subtitle">Cute ANFO Arcade</p>
 
         <div class="menu-row">
-          <button class="menu-btn primary" onclick="startGame('normal')">Start Normal</button>
+          <button class="menu-btn primary" onclick="startGame('normal')">Start</button>
           <button class="menu-btn" onclick="startGame('hard')">Hard</button>
         </div>
 
@@ -138,7 +136,6 @@
     </div>
   </div>
 
-  <!-- فقط یک فایل JS -->
   <script src="script.js"></script>
 </body>
 </html>

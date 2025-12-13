@@ -554,3 +554,126 @@ html, body {
     transform: translateY(0);
   }
 }
+
+
+
+.start-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, #facc15 0%, #020617 40%, #000 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  animation: fadeIn 0.35s ease-out;
+}
+
+.start-panel {
+  width: 90%;
+  max-width: 420px;
+  background: rgba(3,7,18,0.92);
+  border-radius: 24px;
+  padding: 20px 18px 16px;
+  box-shadow: 0 26px 60px rgba(0,0,0,0.9);
+  text-align: center;
+  animation: slideUp 0.4s ease-out;
+}
+
+.start-logo-wrap {
+  margin-bottom: 16px;
+}
+
+.start-logo {
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #f9fafb;
+  text-shadow: 0 0 24px rgba(255,255,255,0.4);
+}
+
+.start-subtitle {
+  font-size: 14px;
+  color: #facc15;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+/* Play main */
+.btn-play-main {
+  width: 100%;
+  padding: 14px 0;
+  border-radius: 20px;
+  border: none;
+  background: linear-gradient(135deg, #facc15, #f97316);
+  color: #111827;
+  font-size: 18px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-bottom: 14px;
+  box-shadow: 0 12px 32px rgba(250,204,21,0.55);
+  transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
+}
+
+.btn-play-main:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.mode-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.mode-chip {
+  flex: 1;
+  padding: 8px 0;
+  border-radius: 999px;
+  border: 1px solid #4b5563;
+  background: transparent;
+  color: #e5e7eb;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mode-chip.selected {
+  background: #facc15;
+  color: #111827;
+  border-color: #facc15;
+}
+
+/* Menu grid */
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.menu-tile {
+  border: none;
+  border-radius: 14px;
+  padding: 9px 4px;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.menu-tile:hover {
+  background: #111827;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}

@@ -4,7 +4,7 @@
 const c = document.getElementById("gameCanvas");
 const x = c.getContext("2d");
 
-let W = innerWidth, H = innerHeight;
+let W = window.innerWidth, H = window.innerHeight;
 
 let p = { x: 0, y: 0, w: 0, h: 0, scale: 1, glow: false };
 
@@ -16,10 +16,9 @@ let hs = +localStorage.getItem("hs") || 0;
 let hunger = 0, miss = 0;
 
 let pizzaCount = 0;
-let speedBoostUntil = 0;
 let gameSpeed = 1;
 
-// NEW: PC (coin / pizza coin)
+// PC (pizza coins)
 let pc = +localStorage.getItem("pc") || 0;
 
 // Combo
@@ -40,7 +39,7 @@ let godMode = false, godModeUntil = 0;
 let feverActive = false, feverUntil = 0;
 let drugEffectUntil = 0, weedEffectUntil = 0;
 
-// NEW: Slow/Fast modes
+// Slow / Fast modes
 let ultraSlowUntil = 0;
 let ultraFastUntil = 0;
 
@@ -50,14 +49,12 @@ let ultraModeUntil = 0;
 let voiceCooldownUntil = 0;
 let recognition = null;
 
-// SKINS
+// Skins
 let currentSkin = localStorage.getItem("skin") || "p";
 const skins = {
-  p:  { name: "Default",        unlocked: true,                   requireScore: 0,    price: 0,   id:"p"  },
-  p1: { name: "Pro 500",        unlocked: hs >= 500,              requireScore: 500,  price: 250, id:"p1" },
-  p2: { name: "Master 1500",    unlocked: hs >= 1500,             requireScore: 1500, price: 400, id:"p2" },
-  p3: { name: "Cute Pink",      unlocked: false,                  requireScore: 0,    price: 300, id:"p3" },
-  p4: { name: "Neon Slice",     unlocked: false,                  requireScore: 0,    price: 600, id:"p4" }
+  p:   { id: "p",   name: "Default",  unlocked: true,        requireScore: 0,    price: 0   },
+  p11: { id: "p11", name: "Pizza 11", unlocked: hs >= 500,   requireScore: 500,  price: 250 },
+  p12: { id: "p12", name: "Pizza 12", unlocked: hs >= 1500,  requireScore: 1500, price: 400 }
 };
 
 // Mode tuning
@@ -77,18 +74,13 @@ const pauseBtn = document.getElementById("pauseBtn");
 
 const hudScore = document.getElementById("hudScore");
 const hudHigh = document.getElementById("hudHigh");
-const hudAmmo = document.getElementById("hudAmmo");
-const hudHunger = document.getElementById("hudHunger");
-const hudMiss = document.getElementById("hudMiss");
-const hudSpeed = document.getElementById("hudSpeed");
 const hudMode = document.getElementById("hudMode");
 const hudPC = document.getElementById("hudPC");
 
-// START MENU refs
 const startMenu = document.getElementById("startMenu");
-const startGameBtns = document.querySelectorAll("[data-mode-start]");
+const playBtn = document.getElementById("playBtn");
+const modeChips = document.querySelectorAll(".mode-chip");
 
-// LOADING refs
 const loadingScreen = document.getElementById("loadingScreen");
 const loadingFill = document.getElementById("loadingFill");
 const loadingPercent = document.getElementById("loadingPercent");
@@ -98,9 +90,6 @@ const profileMenu = document.getElementById("profileMenu");
 const usernameInput = document.getElementById("usernameInput");
 const saveProfileBtn = document.getElementById("saveProfileBtn");
 const closeProfileBtn = document.getElementById("closeProfileBtn");
-const profileDisplay = document.getElementById("profileDisplay");
-const profileAvatarImg = document.getElementById("profileAvatar");
-const profileNameSpan = document.getElementById("profileName");
 
 // SKIN MENU
 const skinMenu = document.getElementById("skinMenu");
@@ -118,15 +107,19 @@ const weeklyList = weeklyMenu ? weeklyMenu.querySelector("#weeklyList") : null;
 // LEADERBOARD MENU
 const leaderboardMenu = document.getElementById("leaderboardMenu");
 
-// VOICE CHEAT TOGGLE
-const voiceCheatStateSpan = document.getElementById("voiceCheatState");
-
 // STATUS / TOAST
 const statusToast = document.getElementById("statusToast");
 
+// Online players
+const onlinePlayersBar = document.getElementById("onlinePlayersBar");
+
 let selectedAvatar = null;
 let profile = JSON.parse(localStorage.getItem("profile") || "null");
+let pendingStartAfterProfile = false;
 
+// ---------------------------
+//  SOUND STATE
+// ---------------------------
 function updateSoundStateText() {
   if (!soundStateSpan) return;
   soundStateSpan.textContent = soundOn ? "On" : "Off";
@@ -164,7 +157,6 @@ let audioLock = false;
 function playSound(name) {
   if (!start || !soundOn) return;
 
-  // shit و background اجازه دارند هر زمان
   if (name !== "shit" && name !== "background") {
     if (audioLock) return;
     audioLock = true;
@@ -200,16 +192,20 @@ function applyGlobalPlaybackRate(rate) {
 // ---------------------------
 function R() {
   const r = devicePixelRatio || 1;
-  W = innerWidth;
-  H = innerHeight;
+
+  W = window.innerWidth;
+  H = window.innerHeight;
+
   c.width = W * r;
   c.height = H * r;
+
   x.setTransform(r, 0, 0, r, 0, 0);
 
-  let s = Math.max(60, Math.min(W * 0.25, H * 0.25));
+  let s = Math.min(W, H) * 0.22;
   p.w = p.h = s;
   p.x = (W - s) / 2;
-  p.y = H - s;
+  p.y = H - s - 10;
+
   item = s * 0.6;
   bs = s * 0.25;
 }
@@ -222,26 +218,24 @@ addEventListener("resize", R);
 const I = s => { let i = new Image(); i.src = s; return i; };
 
 const img = {
-  p: I("PIZZA-KHOOR.png"),
-  p1: I("skin1.png"),
-  p2: I("skin2.png"),
-  p3: I("skin3.png"),
-  p4: I("skin4.png"),
-  r: I("pizza1.png"),
-  g: I("DRUG.png"),
-  b: I("weed.webp"),
-  o: I("shit.webp"),
-  bu: I("bullet.png"),
-  s: I("speed.png"),
+  p:   I("PIZZA-KHOOR.png"),
+  p11: I("pizza11.png"),
+  p12: I("pizza12.png"),
+  r:   I("pizza1.png"),
+  g:   I("DRUG.png"),
+  b:   I("weed.webp"),
+  o:   I("shit.webp"),
+  bu:  I("bullet.png"),
+  s:   I("speed.png"),
   fever: I("pizza44.png"),
-  bg: I("pizzaback.jpg")
+  bg:  I("pizzaback.jpg")
 };
 
 // ---------------------------
-//  LOADING LOGIC
+//  LOADING SYSTEM
 // ---------------------------
 const assetsToLoad = [
-  img.p, img.p1, img.p2, img.p3, img.p4,
+  img.p, img.p11, img.p12,
   img.r, img.g, img.b, img.o, img.bu, img.s, img.fever, img.bg,
   ...Object.values(sounds).flat().filter(a => a instanceof Audio),
   bg
@@ -260,11 +254,11 @@ function updateLoadingProgress() {
     setTimeout(() => {
       if (loadingScreen) loadingScreen.style.display = "none";
       if (startMenu) startMenu.classList.remove("hidden");
-      updateProfileDisplay();
       updateSkinMenu();
       updateShopUI();
       updateChallengesUI();
       updateWeeklyUI();
+      renderFakeOnlinePlayers();
     }, 300);
   }
 }
@@ -279,43 +273,52 @@ assetsToLoad.forEach(asset => {
   }
 });
 
+// Timeout fallback
 setTimeout(() => {
   if (loadingScreen && loadingScreen.style.display !== "none") {
     loadingFill.style.width = "100%";
     loadingPercent.textContent = "100%";
     loadingScreen.style.display = "none";
     if (startMenu) startMenu.classList.remove("hidden");
-    updateProfileDisplay();
     updateSkinMenu();
     updateShopUI();
     updateChallengesUI();
     updateWeeklyUI();
+    renderFakeOnlinePlayers();
   }
 }, 8000);
 
 // ---------------------------
-//  START MENU LOGIC
+//  START MENU & MODES
 // ---------------------------
-startGameBtns.forEach(btn => {
-  btn.addEventListener("click", () => {
-    const mode = btn.dataset.modeStart || "normal";
+modeChips.forEach(chip => {
+  chip.addEventListener("click", () => {
+    modeChips.forEach(c => c.classList.remove("selected"));
+    chip.classList.add("selected");
+    const mode = chip.dataset.mode || "normal";
     applyMode(mode);
-    if (startMenu) startMenu.classList.add("hidden");
-    start = true;
-    go = false;
-    reset();
-    if (soundOn) bg.play().catch(() => {});
   });
 });
 
-document.querySelectorAll(".menu-btn, .menu-icon-btn").forEach(btn => {
+if (playBtn) {
+  playBtn.addEventListener("click", () => {
+    if (!profile) {
+      openProfileMenu();
+      pendingStartAfterProfile = true;
+    } else {
+      startGame();
+    }
+  });
+}
+
+document.querySelectorAll(".secondary-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     const act = btn.dataset.action;
     if (!act) return;
     if (act === "login") openProfileMenu();
     else if (act === "skins") openSkinMenu();
     else if (act === "leaderboard") openLeaderboard();
-    else if (act === "settings") { /* reserved */ }
+    else if (act === "settings") {/* reserved */}
     else if (act === "shop") openShopMenu();
     else if (act === "daily") openChallengeMenu();
     else if (act === "weekly") openWeeklyMenu();
@@ -323,8 +326,17 @@ document.querySelectorAll(".menu-btn, .menu-icon-btn").forEach(btn => {
   });
 });
 
+function startGame() {
+  if (startMenu) startMenu.classList.add("hidden");
+  start = true;
+  go = false;
+  reset();
+  renderFakeOnlinePlayers();
+  if (soundOn) bg.play().catch(() => {});
+}
+
 // ---------------------------
-//  PROFILE SYSTEM
+//  PROFILE
 // ---------------------------
 function highlightAvatar() {
   document.querySelectorAll(".avatar").forEach(a => {
@@ -363,9 +375,13 @@ if (saveProfileBtn) {
     profile = { username, avatar: selectedAvatar, skin: currentSkin };
     localStorage.setItem("profile", JSON.stringify(profile));
 
-    updateProfileDisplay();
-    closeProfileMenu();
     saveProfileOnline();
+    closeProfileMenu();
+
+    if (pendingStartAfterProfile) {
+      pendingStartAfterProfile = false;
+      startGame();
+    }
   });
 }
 
@@ -373,23 +389,13 @@ if (closeProfileBtn) {
   closeProfileBtn.addEventListener("click", closeProfileMenu);
 }
 
-function updateProfileDisplay() {
-  if (!profile || !profileDisplay) {
-    if (profileDisplay) profileDisplay.classList.add("hidden");
-    return;
-  }
-  profileAvatarImg.src = profile.avatar + ".png";
-  profileNameSpan.textContent = profile.username;
-  profileDisplay.classList.remove("hidden");
-}
-
 // ---------------------------
-//  SKIN SYSTEM
+//  SKINS
 // ---------------------------
 function updateSkinUnlockedState() {
   skins.p.unlocked = true;
-  skins.p1.unlocked = hs >= skins.p1.requireScore || skins.p1.price === 0;
-  skins.p2.unlocked = hs >= skins.p2.requireScore || skins.p2.price === 0;
+  skins.p11.unlocked = hs >= skins.p11.requireScore || skins.p11.price === 0 || skins.p11.unlocked;
+  skins.p12.unlocked = hs >= skins.p12.requireScore || skins.p12.price === 0 || skins.p12.unlocked;
 }
 
 function updateSkinMenu() {
@@ -435,11 +441,6 @@ function updateSkinMenu() {
       }
       currentSkin = id;
       localStorage.setItem("skin", currentSkin);
-      if (profile) {
-        profile.skin = currentSkin;
-        localStorage.setItem("profile", JSON.stringify(profile));
-        saveProfileOnline();
-      }
       updateSkinMenu();
     });
   });
@@ -457,7 +458,7 @@ function closeSkinMenu() {
 }
 
 // ---------------------------
-//  SHOP SYSTEM
+//  SHOP (فقط عکس اسکین‌ها)
 // ---------------------------
 function openShopMenu() {
   if (!shopMenu || !shopList) return;
@@ -476,17 +477,21 @@ function updateShopUI() {
 
   Object.keys(skins).forEach(id => {
     const s = skins[id];
-    if (id === "p") return;
+    if (id === "p") return; // default نمایش نده
 
     const div = document.createElement("div");
     div.className = "shop-item";
 
-    const left = document.createElement("div");
-    left.className = "shop-item-info";
-    left.innerHTML = `
+    const imgEl = document.createElement("img");
+    imgEl.src = img[id].src;
+    imgEl.className = "shop-item-img";
+
+    const info = document.createElement("div");
+    info.className = "shop-item-info";
+    info.innerHTML = `
       <div class="shop-item-title">${s.name}</div>
       <div class="shop-item-sub">
-        ${s.unlocked ? "Unlocked" : (s.price ? s.price + " PC" : "Unlock by score")}
+        ${s.unlocked ? "Unlocked" : `${s.price} PC`}
       </div>
     `;
 
@@ -494,53 +499,40 @@ function updateShopUI() {
     btn.className = "shop-buy-btn";
 
     if (s.unlocked) {
-      btn.textContent = (currentSkin === id) ? "Equipped" : "Equip";
-      btn.disabled = (currentSkin === id);
+      btn.textContent = currentSkin === id ? "Equipped" : "Equip";
+      btn.disabled = currentSkin === id;
     } else {
-      if (!s.price || s.price <= 0) {
-        btn.textContent = "Unlock by score";
-        btn.disabled = true;
-      } else {
-        btn.textContent = "Buy";
-        btn.disabled = pc < s.price;
-      }
+      btn.textContent = "Buy";
+      btn.disabled = pc < s.price;
     }
 
     btn.addEventListener("click", () => {
       if (s.unlocked) {
         currentSkin = id;
         localStorage.setItem("skin", currentSkin);
-        if (profile) {
-          profile.skin = currentSkin;
-          localStorage.setItem("profile", JSON.stringify(profile));
-          saveProfileOnline();
-        }
         updateShopUI();
         updateSkinMenu();
       } else {
         if (pc < s.price) {
-          showToast("PC کافی نداری!");
+          showToast("PC کافی نیست");
           return;
         }
         pc -= s.price;
         localStorage.setItem("pc", pc);
         updateHUDPC();
+
         s.unlocked = true;
         currentSkin = id;
         localStorage.setItem("skin", currentSkin);
 
-        if (profile) {
-          profile.skin = currentSkin;
-          localStorage.setItem("profile", JSON.stringify(profile));
-          saveProfileOnline();
-        }
-        showToast("اسکین جدید خریدی!");
+        showToast("اسکین خریداری شد!");
         updateShopUI();
         updateSkinMenu();
       }
     });
 
-    div.appendChild(left);
+    div.appendChild(imgEl);
+    div.appendChild(info);
     div.appendChild(btn);
     shopList.appendChild(div);
   });
@@ -553,7 +545,7 @@ function move(mx) {
   p.x = Math.max(0, Math.min(mx - p.w / 2, W - p.w));
 }
 
-// canvas فقط نمایش، نه input
+// canvas فقط نمایش
 c.style.pointerEvents = "none";
 
 addEventListener("mousemove", e => {
@@ -567,29 +559,16 @@ addEventListener("touchmove", e => {
 }, { passive: true });
 
 let lastTapTime = 0;
-
-// Cheat 1: 20 input → +30 ammo
 let inputTimes = [];
-function registerInputForCheat() {
-  const now = Date.now();
-  inputTimes.push(now);
-  inputTimes = inputTimes.filter(t => now - t <= 5000);
-  if (inputTimes.length >= 20) {
-    ammo += 30;
-    spawnParticles(p.x + p.w / 2, p.y, "gold", 25);
-    inputTimes = [];
-  }
-}
-
-// SlowMo cheat buffer (keyboard)
 let cheatBuffer = "";
 
+// SlowMo cheat
 function activateSlowMo() {
   slowMoUntil = Date.now() + 5000;
   spawnParticles(p.x + p.w / 2, p.y, "#88ddff", 40);
 }
 
-// God Mode cheat
+// God Mode
 function activateGodMode(duration = 8000) {
   godMode = true;
   godModeUntil = Date.now() + duration;
@@ -605,6 +584,17 @@ function updateGodMode(now) {
   }
 }
 
+function registerInputForCheat() {
+  const now = Date.now();
+  inputTimes.push(now);
+  inputTimes = inputTimes.filter(t => now - t <= 5000);
+  if (inputTimes.length >= 20) {
+    ammo += 30;
+    spawnParticles(p.x + p.w / 2, p.y, "gold", 25);
+    inputTimes = [];
+  }
+}
+
 addEventListener("keydown", e => {
   const k = e.key.toLowerCase();
   cheatBuffer += k;
@@ -615,7 +605,7 @@ addEventListener("keydown", e => {
   }
 });
 
-// Swipe cheat برای SlowMo
+// Swipe slowmo
 let swipeState = [];
 let touchStartX = 0, touchStartY = 0;
 let touchActive = false;
@@ -637,10 +627,7 @@ addEventListener("touchstart", e => {
   const y0 = t.clientY - rect.top;
 
   if (!start) {
-    start = true;
-    go = false;
-    if (soundOn) bg.play().catch(() => {});
-    if (startMenu) startMenu.classList.add("hidden");
+    startGame();
     return;
   }
   if (go) { reset(); return; }
@@ -684,7 +671,7 @@ addEventListener("touchend", e => {
   touchActive = false;
 });
 
-// شلیک تک‌تیر با Space
+// Space = shoot/start/reset
 let canShootKeyboard = true;
 
 addEventListener("keydown", e => {
@@ -692,9 +679,7 @@ addEventListener("keydown", e => {
     canShootKeyboard = false;
 
     if (!start) {
-      start = true;
-      if (soundOn) bg.play().catch(() => {});
-      if (startMenu) startMenu.classList.add("hidden");
+      startGame();
     } else if (go) {
       reset();
     } else {
@@ -767,7 +752,7 @@ function updParticles(dt) {
 }
 
 // ---------------------------
-//  MODE SYSTEM
+//  MODE
 // ---------------------------
 function applyMode(mode) {
   currentMode = mode;
@@ -797,6 +782,8 @@ function applyMode(mode) {
     drugPower = 10;
     weedPower = 20;
   }
+
+  if (hudMode) hudMode.textContent = "Mode: " + currentMode.toUpperCase();
 }
 
 // ---------------------------
@@ -860,7 +847,7 @@ function reset() {
 }
 
 // ---------------------------
-//  COMBO SYSTEM
+//  COMBO
 // ---------------------------
 function handleComboPizzaTake() {
   const now = Date.now();
@@ -884,7 +871,7 @@ function breakCombo() {
 }
 
 // ---------------------------
-//  ZIGZAG MOVEMENT (فقط Hard)
+//  ZIGZAG (فقط Hard)
 // ---------------------------
 function applyZigzag(o, sp) {
   if (currentMode !== "hard") return;
@@ -905,7 +892,7 @@ function applyZigzag(o, sp) {
 }
 
 // ---------------------------
-//  FEVER MODE
+//  FEVER (pizza44 → کندی)
 // ---------------------------
 function activateFever() {
   if (feverActive) return;
@@ -925,7 +912,6 @@ function activateFever() {
 
 function updateFever(now) {
   if (!feverActive) return;
-
   if (now > feverUntil) {
     feverActive = false;
     gameSpeed /= 1.25;
@@ -934,7 +920,7 @@ function updateFever(now) {
 }
 
 // ---------------------------
-//  SPAWN SYSTEM
+//  SPAWN
 // ---------------------------
 function spawn(type, w, h, chanceZig = 0.3) {
   const zig = Math.random() < chanceZig;
@@ -953,18 +939,9 @@ function spawn(type, w, h, chanceZig = 0.3) {
   };
 }
 
-// ---------------------------
-//  LIMIT OBJECTS
-// ---------------------------
+// LIMIT
 function limitObjects() {
-  const max = {
-    red: 12,
-    obs: 8,
-    green: 4,
-    blue: 4,
-    buff: 3
-  };
-
+  const max = { red: 12, obs: 8, green: 4, blue: 4, buff: 3 };
   if (reds.length > max.red) reds.length = max.red;
   if (obs.length > max.obs) obs.length = max.obs;
   if (greens.length > max.green) greens.length = max.green;
@@ -973,7 +950,7 @@ function limitObjects() {
 }
 
 // ---------------------------
-//  DAILY / WEEKLY CHALLENGES
+//  DAILY / WEEKLY
 // ---------------------------
 const dailyKey = "ep_daily_state_v1";
 const weeklyKey = "ep_weekly_state_v1";
@@ -983,22 +960,19 @@ let weeklyState = JSON.parse(localStorage.getItem(weeklyKey) || "null");
 
 const dailyTemplate = [
   { id: "d1", text: "Collect 30 pizzas", type: "pizzas", target: 30, rewardPC: 20 },
-  { id: "d2", text: "Reach 800 score", type: "score", target: 800, rewardPC: 15 },
-  { id: "d3", text: "Survive with <= 2 miss", type: "lowMiss", target: 2, rewardPC: 10 }
+  { id: "d2", text: "Reach 800 score",   type: "score",  target: 800, rewardPC: 15 },
+  { id: "d3", text: "Survive with <=2 miss", type: "lowMiss", target: 2, rewardPC: 10 }
 ];
 
 const weeklyTemplate = [
-  { id: "w1", text: "Reach 2000 score", type: "score", target: 2000, rewardPC: 50 },
+  { id: "w1", text: "Reach 2000 score",  type: "score",  target: 2000, rewardPC: 50 },
   { id: "w2", text: "Collect 150 pizzas", type: "pizzas", target: 150, rewardPC: 40 },
-  { id: "w3", text: "Play 20 rounds", type: "rounds", target: 20, rewardPC: 60 }
+  { id: "w3", text: "Play 20 rounds",    type: "rounds", target: 20,  rewardPC: 60 }
 ];
 
 function getDayStart(t) {
-  const d = new Date(t);
-  d.setHours(0,0,0,0);
-  return d.getTime();
+  const d = new Date(t); d.setHours(0,0,0,0); return d.getTime();
 }
-
 function getWeekStart(t) {
   const d = new Date(t);
   const day = d.getDay();
@@ -1129,7 +1103,6 @@ function openChallengeMenu() {
   challengeMenu.classList.remove("hidden");
   updateChallengesUI();
 }
-
 function closeChallengeMenu() {
   if (!challengeMenu) return;
   challengeMenu.classList.add("hidden");
@@ -1187,37 +1160,30 @@ function updateWeeklyUI() {
 // ---------------------------
 function activateUltraSlow() {
   ultraSlowUntil = Date.now() + 10000;
-  ultraFastUntil = 0; // if any fast, cancel it
-  spawnParticles(p.x + p.w/2, p.y, "#88ccff", 40);
+  ultraFastUntil = 0;
+  spawnParticles(p.x + p.w / 2, p.y, "#88ccff", 40);
 }
 
 function activateUltraFast() {
   ultraFastUntil = Date.now() + 10000;
-  ultraSlowUntil = 0; // cancel slow if any
-  spawnParticles(p.x + p.w/2, p.y, "#ffcc00", 40);
+  ultraSlowUntil = 0;
+  spawnParticles(p.x + p.w / 2, p.y, "#ffcc00", 40);
 }
 
 // ---------------------------
-//  ULTRA MODE (Voice Cheat)
+//  ULTRA MODE (Voice)
 // ---------------------------
 function toggleVoiceCheat() {
   voiceCheatEnabled = !voiceCheatEnabled;
-  if (voiceCheatStateSpan) {
-    voiceCheatStateSpan.textContent = voiceCheatEnabled ? "On" : "Off";
-  }
-  if (voiceCheatEnabled) {
-    startVoiceRecognition();
-    showToast("Voice Cheat: Say 'ANFO Ultra Mode'");
-  } else {
-    stopVoiceRecognition();
-  }
+  showToast(voiceCheatEnabled ? "Voice On: say 'ANFO Ultra Mode'" : "Voice Off");
+  if (voiceCheatEnabled) startVoiceRecognition();
+  else stopVoiceRecognition();
 }
 
 function startVoiceRecognition() {
   if (!("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
-    showToast("Voice not supported on this device");
+    showToast("Voice not supported");
     voiceCheatEnabled = false;
-    if (voiceCheatStateSpan) voiceCheatStateSpan.textContent = "Off";
     return;
   }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1229,9 +1195,7 @@ function startVoiceRecognition() {
     const text = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
     handleVoiceCommand(text);
   };
-  recognition.onend = () => {
-    if (voiceCheatEnabled) recognition.start();
-  };
+  recognition.onend = () => { if (voiceCheatEnabled) recognition.start(); };
   recognition.start();
 }
 
@@ -1259,18 +1223,18 @@ function activateUltraMode() {
 function isPulledByUltra(r, effSp) {
   const now = Date.now();
   if (ultraModeUntil <= now) return false;
-  const cx = p.x + p.w / 2;
-  const cy = p.y + p.h / 2;
-  const rx = r.x + r.w / 2;
-  const ry = r.y + r.h / 2;
-  const dx = cx - rx;
-  const dy = cy - ry;
+
+  const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+  const rx = r.x + r.w / 2, ry = r.y + r.h / 2;
+  const dx = cx - rx, dy = cy - ry;
   const dist = Math.hypot(dx, dy);
+
   if (dist > H * 0.6) return false;
 
   const pull = 0.25 * effSp;
   r.x += (dx / (dist || 1)) * pull;
   r.y += (dy / (dist || 1)) * pull;
+
   return coll(p, r);
 }
 
@@ -1285,8 +1249,7 @@ function upd() {
   updateGodMode(now);
   updateFever(now);
 
-  // Dynamic spawn pressure based on score
-  spawnPressure = 1 + Math.min(score / 1500, 2); // تا حدود 3x
+  spawnPressure = 1 + Math.min(score / 1500, 2);
 
   let sp = gameSpeed;
   let effSlowFactor = 1;
@@ -1295,54 +1258,44 @@ function upd() {
   if (now < ultraSlowUntil) effSlowFactor *= 0.4;
   if (now < ultraFastUntil) sp *= 1.5;
 
-  // صداها بر اساس Slow/Fast
-  if (now < ultraSlowUntil) {
-    applyGlobalPlaybackRate(0.6);
-  } else if (now < ultraFastUntil) {
-    applyGlobalPlaybackRate(1.4);
-  } else {
-    applyGlobalPlaybackRate(1);
-  }
+  if (now < ultraSlowUntil) applyGlobalPlaybackRate(0.6);
+  else if (now < ultraFastUntil) applyGlobalPlaybackRate(1.4);
+  else applyGlobalPlaybackRate(1);
 
   let effSp = sp * effSlowFactor;
   const dt = 16;
 
   limitObjects();
 
-  // SPAWN OBJECTS
+  // SPAWN
   if (now > nextRed) {
     reds.push(spawn("red", item, item));
     nextRed = now + (1600 / effSp) / spawnPressure;
   }
-
   if (now > nextObs) {
     if (Math.random() < 0.5 * spawnPressure) {
       obs.push(spawn("obs", item * 0.8, item * 0.8));
     }
     nextObs = now + (3800 / effSp) / spawnPressure;
   }
-
   if (now > nextGreen && Math.random() < 0.2) {
     greens.push(spawn("green", item, item, 0.25));
     nextGreen = now + 6000;
   }
-
   if (now > nextBlue && Math.random() < 0.2) {
     blues.push(spawn("blue", item, item, 0.25));
     nextBlue = now + 8000;
   }
-
   if (now > nextBuff && Math.random() < 0.25) {
     buffs.push(spawn("speed", item, item, 0.25));
     nextBuff = now + 9000;
   }
-
   if (now > nextFever && Math.random() < 0.15) {
     buffs.push(spawn("fever", item, item, 0.25));
     nextFever = now + 15000;
   }
 
-  // REDS (PIZZA)
+  // REDS
   for (let i = reds.length - 1; i >= 0; i--) {
     const r = reds[i];
     r.y += 1.3 * effSp;
@@ -1422,7 +1375,7 @@ function upd() {
     }
   }
 
-  // GREENS (DRUG)
+  // GREENS
   for (let i = greens.length - 1; i >= 0; i--) {
     const g = greens[i];
     g.y += 1.1 * effSp;
@@ -1437,7 +1390,7 @@ function upd() {
     }
   }
 
-  // BLUES (WEED)
+  // BLUES
   for (let i = blues.length - 1; i >= 0; i--) {
     const b = blues[i];
     b.y += 1.0 * effSp;
@@ -1451,7 +1404,7 @@ function upd() {
     }
   }
 
-  // BUFFS (speed + pizza44)
+  // BUFFS
   for (let i = buffs.length - 1; i >= 0; i--) {
     const bf = buffs[i];
     bf.y += 1.3 * effSp;
@@ -1478,12 +1431,10 @@ function upd() {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     b.y -= b.s;
-
     if (b.y + b.h < 0) {
       bullets.splice(i, 1);
       continue;
     }
-
     for (let j = obs.length - 1; j >= 0; j--) {
       const o = obs[j];
       if (coll(b, o)) {
@@ -1502,40 +1453,36 @@ function upd() {
 
   if (combo > 0 && now - lastPizzaTime > 2500) breakCombo();
 
-  // HUD update
   if (hudScore) hudScore.textContent = "Score: " + score;
-  if (hudHigh) hudHigh.textContent = "High: " + hs;
-  if (hudAmmo) hudAmmo.textContent = "Ammo: " + ammo;
-  if (hudHunger) hudHunger.textContent = "Hunger: " + hunger + "%";
-  if (hudMiss) hudMiss.textContent = "Miss: " + miss + (currentMode === "easy" ? "/6" : "/3");
-  if (hudSpeed) hudSpeed.textContent = "Speed: " + gameSpeed.toFixed(1);
-  if (hudMode) hudMode.textContent = "Mode: " + currentMode.toUpperCase();
+  if (hudHigh)  hudHigh.textContent = "High: "  + hs;
   updateHUDPC();
 }
 
 // ---------------------------
-//  DRAW
+//  DRAW LOOP
 // ---------------------------
 function draw() {
   x.save();
   x.clearRect(0, 0, W, H);
 
   const now = Date.now();
-  const inSlowMo = now < slowMoUntil || now < ultraSlowUntil;
 
-  // BACKGROUND: سفید + pizzaback با اوپسیتی کم
+  // BACKGROUND
+  x.fillStyle = "#050505";
+  x.fillRect(0, 0, W, H);
+
   if (img.bg && img.bg.complete) {
-    x.fillStyle = "#ffffff";
-    x.fillRect(0, 0, W, H);
+    const bgW = W * 0.7;
+    const bgH = H * 0.7;
+    const bgX = (W - bgW) / 2;
+    const bgY = (H - bgH) / 2;
+
     x.globalAlpha = 0.22;
-    x.drawImage(img.bg, 0, 0, W, H);
+    x.drawImage(img.bg, bgX, bgY, bgW, bgH);
     x.globalAlpha = 1;
-  } else {
-    x.fillStyle = "#ffffff";
-    x.fillRect(0, 0, W, H);
   }
 
-  // Screen shake
+  // SHAKE
   if (shake > 0) {
     x.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
     shake *= 0.9;
@@ -1547,28 +1494,24 @@ function draw() {
     return;
   }
 
-  // Slow overlay
+  // OVERLAYS
   if (now < ultraSlowUntil) {
     x.fillStyle = "rgba(120,170,255,0.18)";
     x.fillRect(0, 0, W, H);
-  } else if (inSlowMo) {
+  } else if (now < slowMoUntil) {
     x.fillStyle = "rgba(100,150,255,0.08)";
     x.fillRect(0, 0, W, H);
   }
 
-  // Fast overlay
   if (now < ultraFastUntil) {
     x.fillStyle = "rgba(255,220,130,0.16)";
     x.fillRect(0, 0, W, H);
   }
 
-  // Fever overlay (کم)
   if (feverActive) {
-    x.fillStyle = "rgba(255, 220, 80, 0.1)";
+    x.fillStyle = "rgba(255,220,80,0.1)";
     x.fillRect(0, 0, W, H);
   }
-
-  // NOTE: Drug/Weed overlay حذف شده
 
   // PLAYER
   x.save();
@@ -1616,7 +1559,7 @@ function draw() {
     x.globalAlpha = 1;
   });
 
-  // TEXTS
+  // TEXT
   if (comboText && now < comboTextUntil) {
     x.textAlign = "center";
     x.font = "24px Arial";
@@ -1678,43 +1621,56 @@ applyMode("normal");
 reset();
 
 // ---------------------------
-//  FIREBASE ONLINE SYSTEM
+//  FAKE ONLINE PLAYERS
 // ---------------------------
+function renderFakeOnlinePlayers() {
+  if (!onlinePlayersBar) return;
+  onlinePlayersBar.innerHTML = "";
+  const fake = [
+    { name: "Ali",  score: 320, avatar: "avatar2.png" },
+    { name: "Sara", score: 780, avatar: "avatar3.png" },
+    { name: "Nima", score: 150, avatar: "avatar4.png" }
+  ];
+  fake.forEach(p => {
+    const div = document.createElement("div");
+    div.className = "online-player";
+    div.innerHTML = `
+      <img src="${p.avatar}">
+      <div>${p.name}</div>
+      <div>${p.score}</div>
+    `;
+    onlinePlayersBar.appendChild(div);
+  });
+}
 
-// فرض: firebase، auth و db در index.html تعریف شده‌اند
+// ---------------------------
+//  FIREBASE ONLINE
+// ---------------------------
 auth.signInAnonymously()
   .then(() => {
     console.log("✅ Firebase Connected:", auth.currentUser.uid);
     loadOnlineData();
   })
-  .catch(err => {
-    console.error("❌ Firebase Error:", err);
-  });
+  .catch(err => console.error("❌ Firebase Error:", err));
 
 function saveProfileOnline() {
   if (!auth.currentUser || !profile) return;
-
   db.collection("profiles").doc(auth.currentUser.uid).set({
     username: profile.username,
     avatar: profile.avatar,
     skin: profile.skin,
     pc: pc,
     updated: Date.now()
-  }, { merge: true })
-  .then(() => console.log("✅ Profile Saved Online"))
-  .catch(err => console.error("❌ Profile Save Error:", err));
+  }, { merge: true }).catch(console.error);
 }
 
 function saveHighScoreOnline() {
   if (!auth.currentUser) return;
-
   db.collection("scores").doc(auth.currentUser.uid).set({
     score: hs,
     updated: Date.now(),
     username: profile ? profile.username : "Guest"
-  }, { merge: true })
-  .then(() => console.log("✅ High Score Saved Online"))
-  .catch(err => console.error("❌ Score Save Error:", err));
+  }, { merge: true }).catch(console.error);
 }
 
 function loadOnlineData() {
@@ -1724,16 +1680,11 @@ function loadOnlineData() {
     .then(doc => {
       if (doc.exists) {
         const data = doc.data();
-        profile = {
-          username: data.username,
-          avatar: data.avatar,
-          skin: data.skin
-        };
+        profile = { username: data.username, avatar: data.avatar, skin: data.skin };
         pc = data.pc != null ? data.pc : pc;
         localStorage.setItem("profile", JSON.stringify(profile));
         localStorage.setItem("pc", pc);
         currentSkin = profile.skin || "p";
-        updateProfileDisplay();
         updateSkinMenu();
         updateShopUI();
         updateHUDPC();
@@ -1750,13 +1701,13 @@ function loadOnlineData() {
     });
 }
 
-// LEADERBOARD
+// ---------------------------
+//  LEADERBOARD
+// ---------------------------
 function openLeaderboard() {
   const lb = leaderboardMenu;
   if (!lb) return;
-
   lb.classList.remove("hidden");
-
   const list = lb.querySelector(".leaderboard-list");
   list.innerHTML = "Loading...";
 
@@ -1777,12 +1728,13 @@ function openLeaderboard() {
 }
 
 function closeLeaderboard() {
-  const lb = leaderboardMenu;
-  if (!lb) return;
-  lb.classList.add("hidden");
+  if (!leaderboardMenu) return;
+  leaderboardMenu.classList.add("hidden");
 }
 
-// PAUSE SYSTEM
+// ---------------------------
+//  PAUSE / SOUND / TOAST
+// ---------------------------
 function togglePause() {
   paused = !paused;
   if (paused && pauseMenu) pauseMenu.classList.remove("hidden");
@@ -1809,7 +1761,6 @@ function toggleSound() {
   updateSoundStateText();
 }
 
-// TOAST
 function showToast(msg, duration = 2000) {
   if (!statusToast) {
     console.log("TOAST:", msg);
@@ -1817,12 +1768,12 @@ function showToast(msg, duration = 2000) {
   }
   statusToast.textContent = msg;
   statusToast.classList.add("show");
-  setTimeout(() => {
-    statusToast.classList.remove("show");
-  }, duration);
+  setTimeout(() => statusToast.classList.remove("show"), duration);
 }
 
-// Export for HTML
+// ---------------------------
+//  EXPORT FUNCTIONS
+// ---------------------------
 window.goToMainMenu = goToMainMenu;
 window.toggleSound = toggleSound;
 window.closeSkinMenu = closeSkinMenu;

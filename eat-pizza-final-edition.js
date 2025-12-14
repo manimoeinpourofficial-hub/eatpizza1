@@ -245,6 +245,9 @@ window.addEventListener("load", resizeAll);
 const bulletImg = new Image();
 bulletImg.src = "bullet.png";
 //
+let bullets = [];
+const bulletImg = new Image();
+bulletImg.src = "bullet.png";
 function shoot() {
   if (paused || go) return;
 

@@ -209,14 +209,25 @@ function resizeAll() {
   loadingCanvas.style.height = H + "px";
   lc.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-  // ✅ اندازه واقعی پلیر
+  // ✅ اندازهٔ هدف برای همهٔ کاراکترها (مربع ثابت)
+  const PLAYER_SIZE = Math.min(W, H) * 0.22;
+
   const skin = img[currentSkin];
+
   if (skin.complete) {
-    p.w = skin.width;
-    p.h = skin.height;
+    // ✅ اسکیل یکنواخت بدون خراب شدن
+    const scale = Math.min(
+      PLAYER_SIZE / skin.width,
+      PLAYER_SIZE / skin.height
+    );
+
+    p.w = skin.width * scale;
+    p.h = skin.height * scale;
+
   } else {
-    p.w = 120;
-    p.h = 120;
+    // fallback
+    p.w = PLAYER_SIZE;
+    p.h = PLAYER_SIZE;
   }
 
   // ✅ وسط + چسبیده به پایین

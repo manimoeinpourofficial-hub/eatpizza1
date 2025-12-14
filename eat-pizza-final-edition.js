@@ -818,7 +818,6 @@ window.addEventListener("touchstart", e => {
 
 window.addEventListener("keydown", e => { ... });
 window.addEventListener("keyup", e => { ... });
-
 /* ✅✅✅ اینجا بگذار ✅✅✅ */
 
 // ✅ Restart on mobile tap when Game Over

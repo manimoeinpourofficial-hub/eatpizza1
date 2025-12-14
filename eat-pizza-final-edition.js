@@ -221,7 +221,7 @@ if (skin.complete) {
 }
 
   p.x = (W - p.w) / 2;
-  p.y = H - p.h - 10;
+  p.y = H - p.h;
 }
 
 window.addEventListener("resize", resizeAll);

@@ -816,9 +816,30 @@ window.addEventListener("touchstart", e => {
   lastTap = now;
 }, { passive: true });
 
-window.addEventListener("keydown", e => { ... });
-window.addEventListener("keyup", e => { ... });
-/* ✅✅✅ اینجا بگذار ✅✅✅ */
+window.addEventListener("keydown", e => {
+  if (!start || paused) return;
+
+  // حرکت به چپ
+  if (e.code === "ArrowLeft" || e.code === "KeyA") {
+    left = true;
+  }
+
+  // حرکت به راست
+  if (e.code === "ArrowRight" || e.code === "KeyD") {
+    right = true;
+  }
+
+  // شلیک
+  if (e.code === "Space") {
+    shoot();
+  }
+
+  // ریستارت وقتی Game Over هست
+  if (go && e.code === "Enter") {
+    go = false;
+    reset();
+  }
+});/* ✅✅✅ اینجا بگذار ✅✅✅ */
 
 // ✅ Restart on mobile tap when Game Over
 window.addEventListener("touchstart", () => {

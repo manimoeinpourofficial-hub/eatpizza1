@@ -195,7 +195,7 @@ function resizeAll() {
   W = window.innerWidth;
   H = window.innerHeight;
 
-  // main canvas
+  // canvas
   c.width = W * DPR;
   c.height = H * DPR;
   c.style.width = W + "px";
@@ -209,17 +209,17 @@ function resizeAll() {
   loadingCanvas.style.height = H + "px";
   lc.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-  // player bottom
-const skin = img[currentSkin];
-if (skin.complete) {
+  // ✅ اندازه واقعی پلیر
+  const skin = img[currentSkin];
+  if (skin.complete) {
     p.w = skin.width;
     p.h = skin.height;
-} else {
-    // اگر هنوز لود نشده بود، یک fallback کوچک
+  } else {
     p.w = 120;
     p.h = 120;
-}
+  }
 
+  // ✅ وسط + چسبیده به پایین
   p.x = (W - p.w) / 2;
   p.y = H - p.h;
 }

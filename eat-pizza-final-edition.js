@@ -210,9 +210,16 @@ function resizeAll() {
   lc.setTransform(DPR, 0, 0, DPR, 0, 0);
 
   // player bottom
-  const base = Math.min(W, H) * 0.22;
-  p.w = base;
-  p.h = base;
+const skin = img[currentSkin];
+if (skin.complete) {
+    p.w = skin.width;
+    p.h = skin.height;
+} else {
+    // اگر هنوز لود نشده بود، یک fallback کوچک
+    p.w = 120;
+    p.h = 120;
+}
+
   p.x = (W - p.w) / 2;
   p.y = H - p.h - 10;
 }

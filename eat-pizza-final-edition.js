@@ -240,6 +240,29 @@ function resizeAll() {
 window.addEventListener("resize", resizeAll);
 window.addEventListener("load", resizeAll);
 
+
+
+const bulletImg = new Image();
+bulletImg.src = "bullet.png";
+//
+function shoot() {
+  if (paused || go) return;
+
+  // ساخت گلوله جدید
+  bullets.push({
+    x: p.x + p.w / 2 - 10,   // وسط پلیر
+    y: p.y - 20,             // کمی بالاتر از سر پلیر
+    w: 20,
+    h: 40,
+    speed: 18,
+    img: bulletImg           // bullet.png
+  });
+
+  // پخش صدای شلیک اگر داری
+  if (sounds.shoot) {
+    try { sounds.shoot.play(); } catch(e) {}
+  }
+}
 /* -------------------------------
    HUD
 --------------------------------*/

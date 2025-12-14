@@ -292,8 +292,12 @@ window.addEventListener("load", resizeAll);
 --------------------------------*/
 function shoot() {
   if (paused || go || !start) return;
+  if (ammo <= 0) return showToast("Ammo ندارید!");
 
-  bullets.push({
+  ammo--; // ✅ کم کردن مهمات
+  updateHUD();
+
+   bullets.push({
     x: p.x + p.w / 2 - 10,
     y: p.y - 20,
     w: 20,
@@ -365,6 +369,10 @@ function updateSkinUnlocked() {
   skins.p.unlocked = true;
   skins.pizzakhoor11.unlocked = hs >= skins.pizzakhoor11.requireScore || skins.pizzakhoor11.unlocked;
   skins.pizzakhoor12.unlocked = hs >= skins.pizzakhoor12.requireScore || skins.pizzakhoor12.unlocked;
+
+  // ✅ اسکین‌های جدید فقط با PC باز می‌شن
+  skins.player4.unlocked = localStorage.getItem("skin_player4") === "1";
+  skins.player5.unlocked = localStorage.getItem("skin_player5") === "1";
 }
 
 function updateSkinMenu() {
@@ -440,13 +448,15 @@ function updateShopUI() {
     if (item.type === "upgrade" && owned) btn.disabled = true;
 
     btn.onclick = () => {
-      if (item.type === "skin") {
-        if (!skins[item.skinId].unlocked) {
-          if (pc < item.price) return showToast("PC کافی نیست");
-          pc -= item.price; localStorage.setItem("pc", pc); updateHUD();
-          skins[item.skinId].unlocked = true;
-        }
-        currentSkin = item.skinId; localStorage.setItem("skin", currentSkin);
+            if (item.type === "skin") {
+           if (!skins[item.skinId].unlocked) {
+        if (pc < item.price) return showToast("PC کافی نیست");
+        pc -= item.price;
+        localStorage.setItem("pc", pc);
+        localStorage.setItem("skin_" + item.skinId, "1"); // ✅ ذخیره خرید
+        skins[item.skinId].unlocked = true;
+      }
+         currentSkin = item.skinId; localStorage.setItem("skin", currentSkin);
         if (profile) {
           profile.skin = currentSkin;
           localStorage.setItem("profile", JSON.stringify(profile));
@@ -935,6 +945,9 @@ function handleSwipeUp(now) {
   if (currentSkin !== "player4") return;
   if (!canUseAbility()) return;
 
+  activateAbility("player4_shrink", 10000);
+}
+
   const DOUBLE_SWIPE_WINDOW = 400;
   if (!handleSwipeUp.lastTime) {
     handleSwipeUp.lastTime = now;
@@ -951,6 +964,9 @@ function handleSwipeUp(now) {
 function handleSwipeHorizontal(dir, now) {
   if (currentSkin !== "player5") return;
   if (!canUseAbility()) return;
+
+  activateAbility("player5_invis", 7000);
+}
 
   const PATTERN_WINDOW = 2000;
 
@@ -1186,11 +1202,11 @@ function upd() {
       if (localStorage.getItem("upg_double") === "1") pcGain = 2;
       pc += pcGain; localStorage.setItem("pc", pc);
 
-      pizzasSinceLastBullet++;
-      if (pizzasSinceLastBullet >= 2) {
-        pizzasSinceLastBullet = 0;
-        shoot();
-      }
+                pizzasSinceLastBullet++;
+         if (pizzasSinceLastBullet >= 2) {
+           pizzasSinceLastBullet = 0;
+           ammo++; // ✅ فقط اضافه کن، شلیک نکن
+         }
 
       dailyMissions.forEach(m => {
         if (m.type === "pizza" && m.progress >= 0) m.progress++;
@@ -1207,7 +1223,7 @@ function upd() {
       }
 
       spawnParticles(r.x + r.w / 2, r.y + r.h / 2, "orange", 10);
-      p.scale = 1.2; setTimeout(() => p.scale = 1, 150);
+      p.scale = 1.05; setTimeout(() => p.scale = 1, 120);
       reds.splice(i, 1);
       playPizzaVoice();
     } else if (r.y > H) {
@@ -1311,6 +1327,22 @@ function upd() {
         obs.splice(j, 1);
         bullets.splice(i, 1);
         break;
+
+if (collision) {
+  playSound("explode"); // ✅ gooz1.mp3
+}
+
+if (
+  b.x < o.x + o.w &&
+  b.x + b.w > o.x &&
+  b.y < o.y + o.h &&
+  b.y + b.h > o.y
+) {
+  playSound("explode"); // ✅ صدای درست
+  obs.splice(j, 1);
+  bullets.splice(i, 1);
+  break;
+}
       }
     }
   }

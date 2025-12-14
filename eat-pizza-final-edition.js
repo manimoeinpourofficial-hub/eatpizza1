@@ -972,7 +972,7 @@ function handleSwipeHorizontal(dir, now) {
   if (!handleSwipeHorizontal.lastTime || now - handleSwipeHorizontal.lastTime > PATTERN_WINDOW) {
     swipePattern = [];
   }
-  handleSwipeHorizontal.lastTime = now;
+ function handleSwipeHorizontal.lastTime = now;
 
   swipePattern.push(dir);
   if (swipePattern.length > 3) swipePattern.shift();

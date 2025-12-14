@@ -941,17 +941,23 @@ let touchStartY = 0;
 let lastTap = 0;
 let swipePattern = [];
 
+// -------------------------
+// Swipe Up (Player 4 Shrink)
+// -------------------------
 function handleSwipeUp(now) {
   if (currentSkin !== "player4") return;
   if (!canUseAbility()) return;
 
-  activateAbility("player4_shrink", 10000);
-
   const DOUBLE_SWIPE_WINDOW = 400;
+
+  // First swipe
   if (!handleSwipeUp.lastTime) {
     handleSwipeUp.lastTime = now;
+    activateAbility("player4_shrink", 10000);
     return;
   }
+
+  // Double swipe
   if (now - handleSwipeUp.lastTime < DOUBLE_SWIPE_WINDOW) {
     handleSwipeUp.lastTime = 0;
     activateAbility("player4_shrink", 10000);
@@ -960,6 +966,9 @@ function handleSwipeUp(now) {
   }
 }
 
+// -------------------------
+// Swipe Horizontal (Player 5 Invis)
+// -------------------------
 function handleSwipeHorizontal(dir, now) {
   if (currentSkin !== "player5") return;
   if (!canUseAbility()) return;
@@ -967,7 +976,11 @@ function handleSwipeHorizontal(dir, now) {
   activateAbility("player5_invis", 7000);
 }
 
-  const PATTERN_WINDOW = 2000;
+// -------------------------
+// Pattern Window (if needed)
+// -------------------------
+const PATTERN_WINDOW = 2000;
+
 
   if (!handleSwipeHorizontal.lastTime || now - handleSwipeHorizontal.lastTime > PATTERN_WINDOW) {
     swipePattern = [];

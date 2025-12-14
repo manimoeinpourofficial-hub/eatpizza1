@@ -278,7 +278,6 @@ window.addEventListener("load", resizeAll);
 const bulletImg = new Image();
 bulletImg.src = "bullet.png";
 //
-bullets = [];
 const bulletImg = new Image();
 bulletImg.src = "bullet.png";
 function shoot() {

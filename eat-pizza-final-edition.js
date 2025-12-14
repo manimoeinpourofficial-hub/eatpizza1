@@ -284,19 +284,21 @@ bulletImg.src = "bullet.png";
 function shoot() {
   if (paused || go) return;
 
-  // ساخت گلوله جدید
   bullets.push({
-    x: p.x + p.w / 2 - 10,   // وسط پلیر
-    y: p.y - 20,             // کمی بالاتر از سر پلیر
+    x: p.x + p.w / 2 - 10,
+    y: p.y - 20,
     w: 20,
     h: 40,
     speed: 18,
-    img: bulletImg           // bullet.png
+    img: bulletImg
   });
 
-  // پخش صدای شلیک اگر داری
+  // پخش صدای شلیک
   if (sounds.shoot) {
-    try { sounds.shoot.play(); } catch(e) {}
+    try {
+      sounds.shoot.currentTime = 0;
+      sounds.shoot.play();
+    } catch (e) {}
   }
 }
 /* -------------------------------
@@ -1127,24 +1129,34 @@ function upd() {
   }
 
   // bullets
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i];
-    b.y -= b.s;
-    if (b.y + b.h < 0) { bullets.splice(i, 1); continue; }
-    for (let j = obs.length - 1; j >= 0; j--) {
-      const o = obs[j];
-      if (coll(b, o)) {
-        obs.splice(j, 1); bullets.splice(i, 1);
-        score += 3;
-        dailyMissions.forEach(m => { if (m.type === "obstacle" && m.progress >= 0) m.progress++; });
-        spawnParticles(o.x + o.w / 2, o.y + o.h / 2, "#ff6600", 12);
-        playSound("explode");
-        shake = 10;
-        break;
-      }
-    }
+ // bullets
+for (let i = bullets.length - 1; i >= 0; i--) {
+  const b = bullets[i];
+
+  // حرکت گلوله
+  b.y -= b.speed;
+
+  // حذف گلوله وقتی از صفحه خارج شد
+  if (b.y + b.h < 0) {
+    bullets.splice(i, 1);
+    continue;
   }
 
+  // برخورد با موانع
+  for (let j = obs.length - 1; j >= 0; j--) {
+    const o = obs[j];
+    if (
+      b.x < o.x + o.w &&
+      b.x + b.w > o.x &&
+      b.y < o.y + o.h &&
+      b.y + b.h > o.y
+    ) {
+      obs.splice(j, 1);
+      bullets.splice(i, 1);
+      break;
+    }
+  }
+}
   updParticles(dt);
   if (combo > 0 && now - lastPizzaTime > 2500) breakCombo();
   saveMissions();
@@ -1212,9 +1224,11 @@ function draw() {
   buffs.forEach(bf => img.s.complete && x.drawImage(img.s, bf.x, bf.y, bf.w, bf.h));
   specialPizzas.forEach(s => img.fever.complete && x.drawImage(img.fever, s.x, s.y, s.w, s.h));
 
-  bullets.forEach(b => {
-    if (b.img && b.img.complete) x.drawImage(b.img, b.x, b.y, b.w, b.h);
-  });
+   bullets.forEach(b => {
+  if (b.img && b.img.complete) {
+    x.drawImage(b.img, b.x, b.y, b.w, b.h);
+  }
+});
 
   particles.forEach(p0 => {
     x.fillStyle = p0.color;

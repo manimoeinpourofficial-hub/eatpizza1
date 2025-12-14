@@ -986,7 +986,7 @@ function handleSwipeHorizontal(dir, now) {
     swipePattern = [];
     activateAbility("player5_invis", 7000);
   }
-}
+
 
 // touchstart: ثبت شروع، تیر، restart
 window.addEventListener("touchstart", e => {

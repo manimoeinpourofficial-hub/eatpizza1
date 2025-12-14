@@ -973,23 +973,20 @@ function handleSwipeHorizontal(dir, now) {
   if (currentSkin !== "player5") return;
   if (!canUseAbility()) return;
 
-  activateAbility("player5_invis", 7000);
-}
+  const PATTERN_WINDOW = 2000;
 
-// -------------------------
-// Pattern Window (if needed)
-// -------------------------
-const PATTERN_WINDOW = 2000;
-
-
+  // Reset pattern if too slow
   if (!handleSwipeHorizontal.lastTime || now - handleSwipeHorizontal.lastTime > PATTERN_WINDOW) {
     swipePattern = [];
   }
- function handleSwipeHorizontal.lastTime = now;
 
+  handleSwipeHorizontal.lastTime = now;
+
+  // Add direction to pattern
   swipePattern.push(dir);
   if (swipePattern.length > 3) swipePattern.shift();
 
+  // Pattern check: LR → RL → RL
   if (
     swipePattern.length === 3 &&
     swipePattern[0] === "LR" &&
@@ -999,7 +996,7 @@ const PATTERN_WINDOW = 2000;
     swipePattern = [];
     activateAbility("player5_invis", 7000);
   }
-
+}
 
 // touchstart: ثبت شروع، تیر، restart
 window.addEventListener("touchstart", e => {

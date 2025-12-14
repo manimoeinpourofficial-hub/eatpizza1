@@ -865,6 +865,39 @@ window.addEventListener("touchmove", e => {
 }, { passive: true });
 
 /* shooting */
+// ✅ حرکت موبایل
+window.addEventListener("touchstart", e => {
+  if (!start || paused) return;
+  const x = e.touches[0].clientX;
+  left = x < window.innerWidth * 0.5;
+  right = !left;
+}, { passive: true });
+
+window.addEventListener("touchend", () => {
+  left = false;
+  right = false;
+}, { passive: true });
+
+
+// ✅ شلیک موبایل (Double Tap)
+let lastTap = 0;
+window.addEventListener("touchstart", e => {
+  if (!start || paused || go) return;
+
+  const now = Date.now();
+  if (now - lastTap < 300) shoot();
+  lastTap = now;
+}, { passive: true });
+
+
+// ✅ ریستارت موبایل
+window.addEventListener("touchstart", () => {
+  if (start && go) {
+    go = false;
+    reset();
+  }
+}, { passive: true });
+
 window.addEventListener("touchstart", e => {
   if (!start || go || paused) return;
   const now = Date.now();

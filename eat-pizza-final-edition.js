@@ -187,6 +187,39 @@ function playSound(name) {
   a.play().catch(() => {});
 }
 
+function onPizzaCollected() {
+  // امتیاز و منطق بازی
+  score++;
+
+  // ✅ فقط صداهای دیالوگ گرفتن پیتزا
+  playPizzaVoice();
+}
+
+let lastVoiceTime = 0;
+const VOICE_COOLDOWN = 1200;
+
+function playPizzaVoice() {
+  const now = Date.now();
+
+  // جلوگیری از اسپم
+  if (now - lastVoiceTime < VOICE_COOLDOWN) return;
+
+  // احتمال پخش (طبیعی‌تر)
+  if (Math.random() < 0.6) return;
+
+  lastVoiceTime = now;
+
+  const v = sounds.voice; // ✅ فقط صداهای گرفتن پیتزا
+
+  // جلوگیری از overlap
+  if (!v.paused) return;
+
+  try {
+    v.currentTime = 0;
+    v.play();
+  } catch(e) {}
+}
+
 /* -------------------------------
    Resize (canvas + loadingCanvas)
 --------------------------------*/

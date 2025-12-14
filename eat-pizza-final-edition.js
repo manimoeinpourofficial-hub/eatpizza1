@@ -1,8 +1,3 @@
-// ============================================================
-// Eat Pizza · ANFO Edition
-// Firebase Safe Mode + Mobile Safe + Skins + Hunger + Items
-// ============================================================
-
 /* -------------------------------
    Firebase Safe Mode
 --------------------------------*/
@@ -40,7 +35,7 @@ let paused = false;
 
 let score = 0;
 let hs = +localStorage.getItem("hs") || 0;
-let pc = +localStorage.getItem("pc") || 0;
+let pc  = +localStorage.getItem("pc") || 0;
 
 let ammo = 0;
 let hunger = 50;          // 0..100
@@ -61,6 +56,7 @@ let gameSpeed = 1;
 let spawnPressure = 1;
 let zigzagIntensity = 0;  // فقط در هارد فعال می‌کنیم
 
+// هر ۲ پیتزا → یک شلیک
 let pizzasSinceLastBullet = 0;
 
 let slowMoUntil = 0, ultraSlowUntil = 0, ultraFastUntil = 0, ultraModeUntil = 0;
@@ -131,6 +127,38 @@ let selectedAvatar = profile ? profile.avatar : null;
 let pendingStartAfterProfile = false;
 
 /* -------------------------------
+   Ability system (player4, player5)
+--------------------------------*/
+let abilityActive = false;
+let abilityType = null;       // "player4_shrink" | "player5_invis"
+let abilityUntil = 0;
+let lastAbilityUseTime = 0;
+const ABILITY_COOLDOWN = 60000; // 1 دقیقه
+
+function canUseAbility() {
+  const now = Date.now();
+  if (abilityActive) return false;
+  if (now - lastAbilityUseTime < ABILITY_COOLDOWN) return false;
+  if (currentSkin !== "player4" && currentSkin !== "player5") return false;
+  return true;
+}
+
+function activateAbility(type, durationMs) {
+  const now = Date.now();
+  abilityActive = true;
+  abilityType = type;
+  abilityUntil = now + durationMs;
+  lastAbilityUseTime = now;
+
+  if (type === "player4_shrink") {
+    p.scale = 0.5;
+    showToast("Player 4: دو بار ↑ → کوچک شدن 10 ثانیه (هر 1 دقیقه)");
+  } else if (type === "player5_invis") {
+    showToast("Player 5: یک بار ←→ و دو بار →← → نامرئی 7 ثانیه (هر 1 دقیقه)");
+  }
+}
+
+/* -------------------------------
    Images
 --------------------------------*/
 function loadImg(src) {
@@ -144,6 +172,9 @@ const img = {
   p: loadImg("PIZZA-KHOOR.png"),
   pizzakhoor11: loadImg("pizzakhoor11.png"),
   pizzakhoor12: loadImg("pizzakhoor12.png"),
+
+  player4: loadImg("player4.png"),
+  player5: loadImg("player5.png"),
 
   r: loadImg("pizza1.png"),
   g: loadImg("DRUG.png"),     // drug
@@ -167,10 +198,14 @@ function safeAudio(src) {
 }
 
 const sounds = {
-  pizza: [safeAudio("2.mp3"), safeAudio("3.mp3"), safeAudio("5.mp3")],
+  pizzaVoices: [safeAudio("2.mp3"), safeAudio("3.mp3"), safeAudio("5.mp3")],
   drug: safeAudio("1.mp3"),
+  weed: safeAudio("weed.mp3"),       // این فایل‌ها رو خودت بذار
+  shit: safeAudio("shitdamage.mp3"), // این هم
+
   explode: safeAudio("gooz1.mp3"),
-  gameOver: safeAudio("gameover.mp3")
+  gameOver: safeAudio("gameover.mp3"),
+  shoot: safeAudio("shoot.mp3")
 };
 
 const bg = safeAudio("background.mp3");
@@ -180,44 +215,32 @@ let soundOn = true;
 
 function playSound(name) {
   if (!start || !soundOn) return;
-  const s = sounds[name]; if (!s) return;
+  const s = sounds[name];
+  if (!s) return;
   const base = Array.isArray(s) ? s[(Math.random() * s.length) | 0] : s;
   const a = base.cloneNode();
   a.currentTime = 0;
   a.play().catch(() => {});
 }
 
-function onPizzaCollected() {
-  // امتیاز و منطق بازی
-  score++;
-
-  // ✅ فقط صداهای دیالوگ گرفتن پیتزا
-  playPizzaVoice();
-}
-
-let lastVoiceTime = 0;
-const VOICE_COOLDOWN = 1200;
+/* -------------------------------
+   Pizza voice (5s cooldown)
+--------------------------------*/
+let lastPizzaVoiceTime = 0;
+const PIZZA_VOICE_COOLDOWN = 5000;
 
 function playPizzaVoice() {
   const now = Date.now();
+  if (now - lastPizzaVoiceTime < PIZZA_VOICE_COOLDOWN) return;
+  lastPizzaVoiceTime = now;
 
-  // جلوگیری از اسپم
-  if (now - lastVoiceTime < VOICE_COOLDOWN) return;
+  const list = sounds.pizzaVoices;
+  if (!list || list.length === 0) return;
 
-  // احتمال پخش (طبیعی‌تر)
-  if (Math.random() < 0.6) return;
-
-  lastVoiceTime = now;
-
-  const v = sounds.voice; // ✅ فقط صداهای گرفتن پیتزا
-
-  // جلوگیری از overlap
-  if (!v.paused) return;
-
-  try {
-    v.currentTime = 0;
-    v.play();
-  } catch(e) {}
+  const base = list[(Math.random() * list.length) | 0];
+  const a = base.cloneNode();
+  a.currentTime = 0;
+  a.play().catch(() => {});
 }
 
 /* -------------------------------
@@ -242,42 +265,33 @@ function resizeAll() {
   loadingCanvas.style.height = H + "px";
   lc.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-  // ✅ اندازه هدف (مربع ثابت)
   const TARGET_SIZE = Math.min(W, H) * 0.22;
-
   const skin = img[currentSkin];
 
   if (skin.complete && skin.width > 0 && skin.height > 0) {
-
-    // ✅ اسکیل یکنواخت (بدون خراب شدن)
     const scale = Math.min(
       TARGET_SIZE / skin.width,
       TARGET_SIZE / skin.height
     );
-
     p.w = skin.width * scale;
     p.h = skin.height * scale;
-
   } else {
-    // fallback
     p.w = TARGET_SIZE;
     p.h = TARGET_SIZE;
   }
 
-  // ✅ وسط + چسبیده به پایین
   p.x = (W - p.w) / 2;
   p.y = H - p.h;
 }
 
-
 window.addEventListener("resize", resizeAll);
 window.addEventListener("load", resizeAll);
 
-//
-const bulletImg = new Image();
-bulletImg.src = "bullet.png";
+/* -------------------------------
+   Shooting
+--------------------------------*/
 function shoot() {
-  if (paused || go) return;
+  if (paused || go || !start) return;
 
   bullets.push({
     x: p.x + p.w / 2 - 10,
@@ -285,25 +299,20 @@ function shoot() {
     w: 20,
     h: 40,
     speed: 18,
-    img: bulletImg
+    img: img.bu
   });
 
-  // پخش صدای شلیک
-  if (sounds.shoot) {
-    try {
-      sounds.shoot.currentTime = 0;
-      sounds.shoot.play();
-    } catch (e) {}
-  }
+  playSound("shoot");
 }
+
 /* -------------------------------
    HUD
 --------------------------------*/
 function updateHUD() {
-  hudScore && (hudScore.textContent = "Score: " + score);
-  hudHigh  && (hudHigh.textContent  = "High: "  + hs);
-  hudPC    && (hudPC.textContent    = "PC: "    + pc);
-  hudMode  && (hudMode.textContent  = "Mode: "  + currentMode.toUpperCase());
+  hudScore  && (hudScore.textContent  = "Score: " + score);
+  hudHigh   && (hudHigh.textContent   = "High: "  + hs);
+  hudPC     && (hudPC.textContent     = "PC: "    + pc);
+  hudMode   && (hudMode.textContent   = "Mode: "  + currentMode.toUpperCase());
   hudHunger && (hudHunger.textContent = "Hunger: " + hunger + "%");
 }
 
@@ -319,13 +328,34 @@ function showToast(msg, dur = 2000) {
 --------------------------------*/
 const skins = {
   p: { id: "p", name: "Default", unlocked: true, requireScore: 0, price: 0 },
+
   pizzakhoor11: { id: "pizzakhoor11", name: "Pizzakhoor 11", unlocked: hs >= 300, requireScore: 300, price: 200 },
-  pizzakhoor12: { id: "pizzakhoor12", name: "Pizzakhoor 12", unlocked: hs >= 800, requireScore: 800, price: 350 }
+  pizzakhoor12: { id: "pizzakhoor12", name: "Pizzakhoor 12", unlocked: hs >= 800, requireScore: 800, price: 350 },
+
+  player4: {
+    id: "player4",
+    name: "Player 4",
+    unlocked: hs >= 0,
+    requireScore: 0,
+    price: 5000
+  },
+
+  player5: {
+    id: "player5",
+    name: "Player 5",
+    unlocked: hs >= 0,
+    requireScore: 0,
+    price: 8000
+  }
 };
 
 const shopItems = [
   { id: "skin_p11", type: "skin", skinId: "pizzakhoor11", title: "Pizzakhoor 11", desc: "Sharper crust.", price: 200 },
   { id: "skin_p12", type: "skin", skinId: "pizzakhoor12", title: "Pizzakhoor 12", desc: "Elite slice.",   price: 350 },
+
+  { id: "skin_player4", type: "skin", skinId: "player4", title: "Player 4", desc: "قدرت: دو بار ↑ → کوچک شدن 10s.", price: 5000 },
+  { id: "skin_player5", type: "skin", skinId: "player5", title: "Player 5", desc: "قدرت: ←→ و دو بار →← → نامرئی 7s.", price: 8000 },
+
   { id: "upg_slowmo", type: "upgrade", title: "SlowMo Boost", desc: "Start with 3s slow motion.", price: 150, key: "upg_slowmo" },
   { id: "upg_ammo",   type: "upgrade", title: "Extra Ammo",   desc: "Start with +3 ammo.",        price: 120, key: "upg_ammo" },
   { id: "upg_double", type: "upgrade", title: "Double PC",    desc: "2x PC per pizza.",           price: 400, key: "upg_double" }
@@ -349,6 +379,14 @@ function updateSkinMenu() {
       console.warn("Missing image for skin", id);
       return;
     }
+
+    const abilityDesc =
+      id === "player4"
+        ? "قدرت: دو بار ↑ → کوچک شدن 10 ثانیه (هر 1 دقیقه)"
+        : id === "player5"
+        ? "قدرت: یک بار ←→ و دو بار →← → نامرئی 7 ثانیه (هر 1 دقیقه)"
+        : "";
+
     const div = document.createElement("div");
     div.className = "skin-option";
     div.dataset.skin = id;
@@ -356,7 +394,11 @@ function updateSkinMenu() {
     if (currentSkin === id) div.classList.add("selected");
     div.innerHTML = `
       <img class="skin-img" src="${img[id].src}">
-      <div class="skin-label">${s.name} ${s.requireScore ? `(Score ${s.requireScore}+ / ${s.price} PC)` : ""}</div>`;
+      <div class="skin-label">
+        ${s.name} ${s.requireScore ? `(Score ${s.requireScore}+ / ${s.price} PC)` : (s.price ? `(${s.price} PC)` : "")}
+      </div>
+      ${abilityDesc ? `<div class="skin-ability">${abilityDesc}</div>` : ""}
+    `;
     div.onclick = () => {
       if (!s.unlocked) return showToast("از Shop بخر یا HighScore لازم رو بگیر");
       currentSkin = id;
@@ -572,7 +614,6 @@ closeProfileBtn && (closeProfileBtn.onclick = closeProfileMenu);
 /* -------------------------------
    Firebase Online Sync (Safe Mode)
 --------------------------------*/
-
 function loadOnlineDataPromise() {
   if (!firebaseReady || !auth || !db) return Promise.resolve();
   const user = auth.currentUser;
@@ -748,6 +789,10 @@ function reset() {
   speedBoostUntil = 0; specialSlowUntil = 0;
   weedEffectUntil = 0; drugEffectUntil = 0; pizzaSpawnMul = 1;
   missCount = 0; hunger = 50;
+  pizzasSinceLastBullet = 0;
+  abilityActive = false;
+  abilityType = null;
+  abilityUntil = 0;
   applyMode(currentMode);
 
   if (localStorage.getItem("upg_ammo") === "1") ammo += 3;
@@ -800,12 +845,24 @@ function limitObjects() {
    Player hitbox (skin-safe)
 --------------------------------*/
 function playerHitbox() {
-  return {
+  const base = {
     x: p.x + p.w * 0.15,
     y: p.y + p.h * 0.15,
     w: p.w * 0.7,
     h: p.h * 0.7
   };
+
+  if (currentSkin === "player4" && abilityActive && abilityType === "player4_shrink") {
+    const s = 0.6;
+    return {
+      x: base.x + base.w * (1 - s) / 2,
+      y: base.y + base.h * (1 - s) / 2,
+      w: base.w * s,
+      h: base.h * s
+    };
+  }
+
+  return base;
 }
 
 /* -------------------------------
@@ -844,19 +901,23 @@ function isPulledByUltra(r, effSp) {
 }
 
 /* -------------------------------
-   Input (Touch + Tilt)
+   Input (Touch + Tilt + Abilities)
 --------------------------------*/
 function move(mx) {
   p.x = Math.max(0, Math.min(mx - p.w / 2, W - p.w));
 }
 
-/* touch/mouse move */
+let left = false, right = false;
+
+// mouse move
 window.addEventListener("mousemove", e => {
   if (!start || go || paused) return;
   if (controlType === "tilt") return;
   const r = c.getBoundingClientRect();
   move(e.clientX - r.left);
 });
+
+// touch move
 window.addEventListener("touchmove", e => {
   if (!start || go || paused) return;
   if (controlType === "tilt") return;
@@ -864,85 +925,142 @@ window.addEventListener("touchmove", e => {
   move(t.clientX - r.left);
 }, { passive: true });
 
-/* shooting */
-// ✅ حرکت موبایل
-window.addEventListener("touchstart", e => {
-  if (!start || paused) return;
-  const x = e.touches[0].clientX;
-  left = x < window.innerWidth * 0.5;
-  right = !left;
-}, { passive: true });
-
-window.addEventListener("touchend", () => {
-  left = false;
-  right = false;
-}, { passive: true });
-
-
-// ✅ شلیک موبایل (Double Tap)
+/* --- swipe detection --- */
+let touchStartX = 0;
+let touchStartY = 0;
 let lastTap = 0;
+let swipePattern = [];
+
+function handleSwipeUp(now) {
+  if (currentSkin !== "player4") return;
+  if (!canUseAbility()) return;
+
+  const DOUBLE_SWIPE_WINDOW = 400;
+  if (!handleSwipeUp.lastTime) {
+    handleSwipeUp.lastTime = now;
+    return;
+  }
+  if (now - handleSwipeUp.lastTime < DOUBLE_SWIPE_WINDOW) {
+    handleSwipeUp.lastTime = 0;
+    activateAbility("player4_shrink", 10000);
+  } else {
+    handleSwipeUp.lastTime = now;
+  }
+}
+
+function handleSwipeHorizontal(dir, now) {
+  if (currentSkin !== "player5") return;
+  if (!canUseAbility()) return;
+
+  const PATTERN_WINDOW = 2000;
+
+  if (!handleSwipeHorizontal.lastTime || now - handleSwipeHorizontal.lastTime > PATTERN_WINDOW) {
+    swipePattern = [];
+  }
+  handleSwipeHorizontal.lastTime = now;
+
+  swipePattern.push(dir);
+  if (swipePattern.length > 3) swipePattern.shift();
+
+  if (
+    swipePattern.length === 3 &&
+    swipePattern[0] === "LR" &&
+    swipePattern[1] === "RL" &&
+    swipePattern[2] === "RL"
+  ) {
+    swipePattern = [];
+    activateAbility("player5_invis", 7000);
+  }
+}
+
+// touchstart: ثبت شروع، تیر، restart
 window.addEventListener("touchstart", e => {
+  if (e.touches.length > 0) {
+    const t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+  }
+
+  // double-tap برای تیر
   if (!start || paused || go) return;
-
   const now = Date.now();
-  if (now - lastTap < 300) shoot();
-  lastTap = now;
-}, { passive: true });
-
-
-// ✅ ریستارت موبایل
-window.addEventListener("touchstart", () => {
-  if (start && go) {
-    go = false;
-    reset();
-  }
-}, { passive: true });
-
-window.addEventListener("touchstart", e => {
-  if (!start || go || paused) return;
-  const now = Date.now();
-  if (now - lastTap < 300) shoot();
-  lastTap = now;
-}, { passive: true });
-
-window.addEventListener("keydown", e => {
-  if (!start || paused) return;
-
-  // حرکت به چپ
-  if (e.code === "ArrowLeft" || e.code === "KeyA") {
-    left = true;
-  }
-
-  // حرکت به راست
-  if (e.code === "ArrowRight" || e.code === "KeyD") {
-    right = true;
-  }
-
-  // شلیک
-  if (e.code === "Space") {
+  if (now - lastTap < 300) {
     shoot();
   }
+  lastTap = now;
+}, { passive: true });
 
-  // ریستارت وقتی Game Over هست
-  if (go && e.code === "Enter") {
-    go = false;
-    reset();
-  }
-});/* ✅✅✅ اینجا بگذار ✅✅✅ */
-
-// ✅ Restart on mobile tap when Game Over
-window.addEventListener("touchstart", () => {
+// touchend: swipe و ریستارت
+window.addEventListener("touchend", e => {
   if (start && go) {
     go = false;
     reset();
+    return;
+  }
+
+  if (!start || paused || go) return;
+  if (e.changedTouches.length === 0) return;
+
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+
+  const now = Date.now();
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+  const SWIPE_MIN = 50;
+
+  // swipe عمودی
+  if (absY > absX && absY > SWIPE_MIN) {
+    if (dy < 0) handleSwipeUp(now);
+  }
+
+  // swipe افقی
+  if (absX > absY && absX > SWIPE_MIN) {
+    if (dx > 0) {
+      handleSwipeHorizontal("LR", now);
+    } else {
+      handleSwipeHorizontal("RL", now);
+    }
   }
 }, { passive: true });
 
-// ✅ Restart on desktop click when Game Over
+// restart desktop
 window.addEventListener("mousedown", () => {
   if (start && go) {
     go = false;
     reset();
+  }
+});
+
+// keyboard
+window.addEventListener("keydown", e => {
+  if (!start || paused) return;
+
+  if (e.code === "ArrowLeft" || e.code === "KeyA") {
+    left = true;
+  }
+
+  if (e.code === "ArrowRight" || e.code === "KeyD") {
+    right = true;
+  }
+
+  if (e.code === "Space") {
+    shoot();
+  }
+
+  if (go && e.code === "Enter") {
+    go = false;
+    reset();
+  }
+});
+
+window.addEventListener("keyup", e => {
+  if (e.code === "ArrowLeft" || e.code === "KeyA") {
+    left = false;
+  }
+  if (e.code === "ArrowRight" || e.code === "KeyD") {
+    right = false;
   }
 });
 
@@ -1008,6 +1126,17 @@ function upd() {
   if (!start || go || paused) return;
   const now = Date.now();
 
+  // اتمام قدرت‌ها
+  if (abilityActive && now > abilityUntil) {
+    abilityActive = false;
+    abilityType = null;
+    p.scale = 1;
+  }
+
+  // حرکت با کیبورد
+  if (left)  p.x = Math.max(0, p.x - 6);
+  if (right) p.x = Math.min(W - p.w, p.x + 6);
+
   updGod(now);
   updFever(now);
 
@@ -1047,6 +1176,7 @@ function upd() {
     const collected = coll(ph, r) || isPulledByUltra(r, effSp);
     if (collected) {
       handleCombo();
+
       let base = 5;
       if (fever) base *= 2;
       if (ultraModeUntil > now) base *= 1.5;
@@ -1059,7 +1189,7 @@ function upd() {
       pizzasSinceLastBullet++;
       if (pizzasSinceLastBullet >= 2) {
         pizzasSinceLastBullet = 0;
-        ammo++;
+        shoot();
       }
 
       dailyMissions.forEach(m => {
@@ -1078,7 +1208,8 @@ function upd() {
 
       spawnParticles(r.x + r.w / 2, r.y + r.h / 2, "orange", 10);
       p.scale = 1.2; setTimeout(() => p.scale = 1, 150);
-      reds.splice(i, 1); playSound("pizza");
+      reds.splice(i, 1);
+      playPizzaVoice();
     } else if (r.y > H) {
       reds.splice(i, 1); breakCombo();
       missCount++;
@@ -1093,7 +1224,9 @@ function upd() {
     const o = obs[i];
     o.y += 1.5 * effSp; applyZigzag(o, effSp);
     if (coll(ph, o)) {
-      go = true; playSound("gameOver");
+      go = true;
+      playSound("shit");
+      playSound("gameOver");
       spawnParticles(p.x + p.w / 2, p.y + p.h / 2, "red", 15); shake = 20;
       weeklyMissions.forEach(m => {
         if (m.type === "games" && m.progress >= 0) m.progress++;
@@ -1103,7 +1236,7 @@ function upd() {
     }
   }
 
-  // drug: hunger -30, pizzas -30% for 10s
+  // drug
   for (let i = greens.length - 1; i >= 0; i--) {
     const g = greens[i];
     g.y += 1.1 * effSp; applyZigzag(g, effSp);
@@ -1118,7 +1251,7 @@ function upd() {
     }
   }
 
-  // weed: hunger +25, pizzas +25% for 10s
+  // weed
   for (let i = blues.length - 1; i >= 0; i--) {
     const b = blues[i];
     b.y += 1.0 * effSp; applyZigzag(b, effSp);
@@ -1129,10 +1262,11 @@ function upd() {
       weedEffectUntil = now2 + 10000;
       blues.splice(i, 1);
       spawnParticles(b.x + b.w / 2, b.y + b.h / 2, "#00ccff", 8);
+      playSound("weed");
     }
   }
 
-  // speed: 10s faster + missCount--
+  // speed buff
   for (let i = buffs.length - 1; i >= 0; i--) {
     const bf = buffs[i];
     bf.y += 1.3 * effSp; applyZigzag(bf, effSp);
@@ -1145,7 +1279,7 @@ function upd() {
     } else if (bf.y > H) buffs.splice(i, 1);
   }
 
-  // pizza44: 10s slow
+  // pizza44
   for (let i = specialPizzas.length - 1; i >= 0; i--) {
     const s = specialPizzas[i];
     s.y += 1.1 * effSp; applyZigzag(s, effSp);
@@ -1157,34 +1291,30 @@ function upd() {
   }
 
   // bullets
- // bullets
-for (let i = bullets.length - 1; i >= 0; i--) {
-  const b = bullets[i];
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.y -= b.speed;
 
-  // حرکت گلوله
-  b.y -= b.speed;
-
-  // حذف گلوله وقتی از صفحه خارج شد
-  if (b.y + b.h < 0) {
-    bullets.splice(i, 1);
-    continue;
-  }
-
-  // برخورد با موانع
-  for (let j = obs.length - 1; j >= 0; j--) {
-    const o = obs[j];
-    if (
-      b.x < o.x + o.w &&
-      b.x + b.w > o.x &&
-      b.y < o.y + o.h &&
-      b.y + b.h > o.y
-    ) {
-      obs.splice(j, 1);
+    if (b.y + b.h < 0) {
       bullets.splice(i, 1);
-      break;
+      continue;
+    }
+
+    for (let j = obs.length - 1; j >= 0; j--) {
+      const o = obs[j];
+      if (
+        b.x < o.x + o.w &&
+        b.x + b.w > o.x &&
+        b.y < o.y + o.h &&
+        b.y + b.h > o.y
+      ) {
+        obs.splice(j, 1);
+        bullets.splice(i, 1);
+        break;
+      }
     }
   }
-}
+
   updParticles(dt);
   if (combo > 0 && now - lastPizzaTime > 2500) breakCombo();
   saveMissions();
@@ -1210,6 +1340,10 @@ function drawBG() {
 }
 
 function drawPlayer() {
+  if (currentSkin === "player5" && abilityActive && abilityType === "player5_invis") {
+    return;
+  }
+
   const skin = img[currentSkin] || img.p;
   if (!skin.complete) return;
   x.save();
@@ -1252,11 +1386,11 @@ function draw() {
   buffs.forEach(bf => img.s.complete && x.drawImage(img.s, bf.x, bf.y, bf.w, bf.h));
   specialPizzas.forEach(s => img.fever.complete && x.drawImage(img.fever, s.x, s.y, s.w, s.h));
 
-   bullets.forEach(b => {
-  if (b.img && b.img.complete) {
-    x.drawImage(b.img, b.x, b.y, b.w, b.h);
-  }
-});
+  bullets.forEach(b => {
+    if (b.img && b.img.complete) {
+      x.drawImage(b.img, b.x, b.y, b.w, b.h);
+    }
+  });
 
   particles.forEach(p0 => {
     x.fillStyle = p0.color;
@@ -1392,10 +1526,10 @@ loadingLoop();
 
 /* -------------------------------
    Asset loading & removing loader
-   (مرحله‌ای + Firebase Safe Mode)
 --------------------------------*/
 const imgAssets = [
   img.p, img.pizzakhoor11, img.pizzakhoor12,
+  img.player4, img.player5,
   img.r, img.g, img.b, img.o, img.bu, img.s, img.fever, img.bg
 ];
 
@@ -1497,18 +1631,18 @@ function finishLoading() {
 /* -------------------------------
    Export for HTML
 --------------------------------*/
-window.goToMainMenu     = goToMainMenu;
-window.toggleSound      = toggleSound;
-window.openShopMenu     = openShopMenu;
-window.closeShopMenu    = closeShopMenu;
-window.openSkinMenu     = openSkinMenu;
-window.closeSkinMenu    = closeSkinMenu;
-window.openChallengeMenu= openChallengeMenu;
+window.goToMainMenu      = goToMainMenu;
+window.toggleSound       = toggleSound;
+window.openShopMenu      = openShopMenu;
+window.closeShopMenu     = closeShopMenu;
+window.openSkinMenu      = openSkinMenu;
+window.closeSkinMenu     = closeSkinMenu;
+window.openChallengeMenu = openChallengeMenu;
 window.closeChallengeMenu= closeChallengeMenu;
-window.openWeeklyMenu   = openWeeklyMenu;
-window.closeWeeklyMenu  = closeWeeklyMenu;
-window.openLeaderboard  = openLeaderboard;
-window.closeLeaderboard = closeLeaderboard;
-window.closeSettingsMenu= closeSettingsMenu;
+window.openWeeklyMenu    = openWeeklyMenu;
+window.closeWeeklyMenu   = closeWeeklyMenu;
+window.openLeaderboard   = openLeaderboard;
+window.closeLeaderboard  = closeLeaderboard;
+window.closeSettingsMenu = closeSettingsMenu;
 
-console.log("✅ Eat Pizza · Firebase Safe Mode · Mobile Ready");
+console.log("✅ Eat Pizza · Firebase Safe Mode · Mobile Ready · Abilities v1");

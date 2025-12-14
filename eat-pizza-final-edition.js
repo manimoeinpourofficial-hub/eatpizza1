@@ -946,7 +946,6 @@ function handleSwipeUp(now) {
   if (!canUseAbility()) return;
 
   activateAbility("player4_shrink", 10000);
-}
 
   const DOUBLE_SWIPE_WINDOW = 400;
   if (!handleSwipeUp.lastTime) {

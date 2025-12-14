@@ -273,10 +273,6 @@ function resizeAll() {
 window.addEventListener("resize", resizeAll);
 window.addEventListener("load", resizeAll);
 
-
-
-const bulletImg = new Image();
-bulletImg.src = "bullet.png";
 //
 const bulletImg = new Image();
 bulletImg.src = "bullet.png";

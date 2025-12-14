@@ -209,16 +209,17 @@ function resizeAll() {
   loadingCanvas.style.height = H + "px";
   lc.setTransform(DPR, 0, 0, DPR, 0, 0);
 
-  // ✅ اندازهٔ هدف برای همهٔ کاراکترها (مربع ثابت)
-  const PLAYER_SIZE = Math.min(W, H) * 0.22;
+  // ✅ اندازه هدف (مربع ثابت)
+  const TARGET_SIZE = Math.min(W, H) * 0.22;
 
   const skin = img[currentSkin];
 
-  if (skin.complete) {
-    // ✅ اسکیل یکنواخت بدون خراب شدن
+  if (skin.complete && skin.width > 0 && skin.height > 0) {
+
+    // ✅ اسکیل یکنواخت (بدون خراب شدن)
     const scale = Math.min(
-      PLAYER_SIZE / skin.width,
-      PLAYER_SIZE / skin.height
+      TARGET_SIZE / skin.width,
+      TARGET_SIZE / skin.height
     );
 
     p.w = skin.width * scale;
@@ -226,14 +227,15 @@ function resizeAll() {
 
   } else {
     // fallback
-    p.w = PLAYER_SIZE;
-    p.h = PLAYER_SIZE;
+    p.w = TARGET_SIZE;
+    p.h = TARGET_SIZE;
   }
 
   // ✅ وسط + چسبیده به پایین
   p.x = (W - p.w) / 2;
   p.y = H - p.h;
 }
+
 
 window.addEventListener("resize", resizeAll);
 window.addEventListener("load", resizeAll);
@@ -807,12 +809,6 @@ window.addEventListener("touchmove", e => {
 }, { passive: true });
 
 /* shooting */
-let lastTap = 0, canShootKey = true;
-function shoot() {
-  if (ammo <= 0) return;
-  ammo--;
-  bullets.push({ x: p.x + p.w / 2 - 10, y: p.y - 6, w: 20, h: 40, s: 12, img: img.bu });
-}
 window.addEventListener("touchstart", e => {
   if (!start || go || paused) return;
   const now = Date.now();
@@ -820,23 +816,25 @@ window.addEventListener("touchstart", e => {
   lastTap = now;
 }, { passive: true });
 
-window.addEventListener("keydown", e => {
-  if (e.code === "Space") {
-    if (go) {
-      go = false;
-      reset();
-      return;
-    }
-    if (canShootKey && start && !go && !paused) {
-      canShootKey = false;
-      shoot();
-    }
+window.addEventListener("keydown", e => { ... });
+window.addEventListener("keyup", e => { ... });
+
+/* ✅✅✅ اینجا بگذار ✅✅✅ */
+
+// ✅ Restart on mobile tap when Game Over
+window.addEventListener("touchstart", () => {
+  if (start && go) {
+    go = false;
+    reset();
   }
-  if (e.code === "KeyP" && start && !go) togglePause();
-  if (e.code === "Enter" && !start && startMenu) startGame();
-});
-window.addEventListener("keyup", e => {
-  if (e.code === "Space") canShootKey = true;
+}, { passive: true });
+
+// ✅ Restart on desktop click when Game Over
+window.addEventListener("mousedown", () => {
+  if (start && go) {
+    go = false;
+    reset();
+  }
 });
 
 /* tilt */
